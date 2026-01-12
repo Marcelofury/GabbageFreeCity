@@ -39,17 +39,61 @@ A mobile-first waste management solution connecting Kampala residents with garba
 ```
 GFC/
 ├── database/
-│   └── schema.sql                    # Supabase schema with PostGIS
+│   └── schema.sql                           # Supabase schema with PostGIS
 │
 ├── backend/
-│   └── webhooks/
-│       └── flutterwaveWebhook.js     # Payment webhook handler
+│   ├── config/
+│   │   ├── supabase.js                      # Supabase client config
+│   │   └── africasTalking.js                # SMS service config
+│   ├── middleware/
+│   │   ├── auth.js                          # JWT authentication
+│   │   └── errorHandler.js                  # Global error handler
+│   ├── routes/
+│   │   ├── authRoutes.js                    # Login/Register endpoints
+│   │   ├── garbageReportRoutes.js           # Report management
+│   │   ├── paymentRoutes.js                 # Payment initiation
+│   │   └── collectorRoutes.js               # Collector operations
+│   ├── webhooks/
+│   │   └── flutterwaveWebhook.js            # Payment webhook handler
+│   ├── .env.example                         # Environment variables template
+│   ├── package.json                         # Node dependencies
+│   └── server.js                            # Main Express server
 │
 ├── mobile_app/
-│   └── lib/
-│       └── services/
-│           └── location_service.dart  # GPS & location services
+│   ├── lib/
+│   │   ├── models/
+│   │   │   ├── user.dart                    # User model
+│   │   │   └── garbage_report.dart          # Report model
+│   │   ├── providers/
+│   │   │   ├── auth_provider.dart           # Auth state management
+│   │   │   ├── location_provider.dart       # Location state
+│   │   │   └── report_provider.dart         # Reports state
+│   │   ├── screens/
+│   │   │   ├── splash_screen.dart           # App splash screen
+│   │   │   ├── auth/
+│   │   │   │   ├── login_screen.dart        # Login UI
+│   │   │   │   └── register_screen.dart     # Registration UI
+│   │   │   ├── resident/
+│   │   │   │   ├── resident_home_screen.dart
+│   │   │   │   ├── report_garbage_screen.dart
+│   │   │   │   └── my_reports_screen.dart
+│   │   │   └── collector/
+│   │   │       └── collector_home_screen.dart
+│   │   ├── services/
+│   │   │   ├── api_service.dart             # HTTP API client
+│   │   │   └── location_service.dart        # GPS services
+│   │   └── main.dart                        # App entry point
+│   ├── android/
+│   │   └── app/src/main/AndroidManifest.xml # Android config
+│   ├── ios/
+│   │   └── Runner/Info.plist                # iOS config
+│   └── pubspec.yaml                         # Flutter dependencies
 │
+├── docs/
+│   ├── API_DOCUMENTATION.md                 # API endpoints reference
+│   └── DEPLOYMENT_GUIDE.md                  # Deployment instructions
+│
+├── .gitignore
 └── README.md
 ```
 
