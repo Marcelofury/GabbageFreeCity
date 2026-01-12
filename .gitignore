@@ -1,0 +1,50 @@
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+android/.gradle/
+android/app/debug
+android/app/profile
+android/app/release
+ios/.symlinks/
+ios/Pods/
+ios/Runner.app
+.fvm/
+
+# Database dumps
+*.sql.gz
+*.dump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
