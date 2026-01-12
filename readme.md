@@ -1,22 +1,22 @@
-# 🗑️ Garbage Free City (GFC)
+# Garbage Free City (GFC)
 **Smart Waste Management System for Kampala (KCCA)**
 
 A mobile-first waste management solution connecting Kampala residents with garbage collectors through real-time GPS tracking, mobile money payments, and optimized route planning.
 
 ---
 
-## 📱 Overview
+## Overview
 
 **Garbage Free City (GFC)** empowers residents to report garbage pile-ups and enables efficient collection through:
-- 📍 **GPS-based reporting** with real-time location tracking
-- 💰 **Mobile Money payments** via Flutterwave (MTN & Airtel Money)
-- 🚛 **Optimized routing** using PostGIS for nearest collector assignment
-- 📲 **SMS notifications** via Africa's Talking
-- ✅ **QR code verification** at collection points
+- **GPS-based reporting** with real-time location tracking
+- **Mobile Money payments** via Flutterwave (MTN & Airtel Money)
+- **Optimized routing** using PostGIS for nearest collector assignment
+- **SMS notifications** via Africa's Talking
+- **QR code verification** at collection points
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Flutter** - Cross-platform mobile app (iOS/Android)
@@ -34,7 +34,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 GFC/
@@ -99,9 +99,9 @@ GFC/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### 1️⃣ Database Setup (Supabase)
+### 1. Database Setup (Supabase)
 
 1. Create a Supabase project at [supabase.com](https://supabase.com)
 2. Enable PostGIS extension:
@@ -113,7 +113,7 @@ GFC/
    psql -h your-project.supabase.co -U postgres -d postgres -f database/schema.sql
    ```
 
-### 2️⃣ Backend Setup (Node.js)
+### 2. Backend Setup (Node.js)
 
 1. Install dependencies:
    ```bash
@@ -142,7 +142,7 @@ GFC/
    - Add URL: `https://your-domain.com/webhooks/flutterwave`
    - Copy secret hash to `.env`
 
-### 3️⃣ Mobile App Setup (Flutter)
+### 3. Mobile App Setup (Flutter)
 
 1. Install dependencies:
    ```yaml
@@ -172,7 +172,7 @@ GFC/
 
 ---
 
-## 📊 Database Schema
+## Database Schema
 
 ### Tables
 
@@ -208,7 +208,7 @@ SELECT calculate_distance(location1, location2);
 
 ---
 
-## 🔐 Security Notes
+## Security Notes
 
 ### Webhook Verification
 The Flutterwave webhook verifies authenticity using:
@@ -228,7 +228,7 @@ if (signature !== process.env.FLUTTERWAVE_SECRET_HASH) {
 
 ---
 
-## 🇺🇬 Uganda-Specific Context
+## Uganda-Specific Context
 
 ### Mobile Money
 - **MTN Mobile Money** (*165#) - 60%+ market share
@@ -249,7 +249,7 @@ if (signature !== process.env.FLUTTERWAVE_SECRET_HASH) {
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Test Webhook Locally (ngrok)
 ```bash
@@ -272,17 +272,17 @@ ngrok http 3000
 
 ---
 
-## 📞 Support
+## Support
 
 - **KCCA Support**: +256-XXX-XXXXXX
 - **Developer**: [GitHub](https://github.com/Marcelofury/GabbageFreeCity)
 
 ---
 
-## 📄 License
+## License
 
 Built for KCCA (Kampala Capital City Authority) - 2026
 
 ---
 
-**Webale nyo! (Thank you!)** 🇺🇬
+**Webale nyo! (Thank you!)**
