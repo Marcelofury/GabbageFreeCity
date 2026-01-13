@@ -130,7 +130,6 @@ router.post('/initiate', authenticateToken, requireUserType('resident'), async (
                 merchant_reference: merchantRef,
                 redirect_url: pesapalResponse.data.redirect_url,
                 order_tracking_id: pesapalResponse.data.order_tracking_id
-                flutterwave_response: flwResponse.data
             }
         });
 
