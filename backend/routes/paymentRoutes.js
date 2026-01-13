@@ -1,6 +1,6 @@
 /**
  * Payment Routes
- * Handles Flutterwave payment initialization
+ * Handles Pesapal payment initialization
  */
 
 const express = require('express');
@@ -10,6 +10,7 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
+const { getPesapalToken } = require('../webhooks/pesapalWebhook');
 
 // Validation schema
 const initiatePaymentSchema = Joi.object({
@@ -19,8 +20,7 @@ const initiatePaymentSchema = Joi.object({
 });
 
 /**
- * POST /api/payments/initiate
- * Initiate Flutterwave Mobile Money payment
+ * POST /apiPesapal Mobile Money payment
  */
 router.post('/initiate', authenticateToken, requireUserType('resident'), async (req, res, next) => {
     try {
@@ -66,7 +66,7 @@ router.post('/initiate', authenticateToken, requireUserType('resident'), async (
         }
 
         const amount = value.amount || report.payment_amount;
-        const txRef = `GFC-${Date.now()}-${uuidv4().slice(0, 8)}`;
+        const merchantRef = `GFC-${Date.now()}-${uuidv4().slice(0, 8)}`;
 
         // Create payment record
         const { data: payment, error: paymentError } = await supabase
@@ -74,7 +74,7 @@ router.post('/initiate', authenticateToken, requireUserType('resident'), async (
             .insert([{
                 report_id,
                 resident_id: req.user.id,
-                flw_ref: txRef,
+                flw_ref: merchantRef, // Using this field for Pesapal reference
                 amount,
                 currency: 'UGX',
                 payment_method: 'mobile_money',
@@ -89,28 +89,34 @@ router.post('/initiate', authenticateToken, requireUserType('resident'), async (
             throw paymentError;
         }
 
-        // Initialize Flutterwave payment
-        const flwResponse = await axios.post(
-            'https://api.flutterwave.com/v3/charges?type=mobile_money_uganda',
+        // Get Pesapal OAuth token
+        const token = await getPesapalToken();
+
+        // Initialize Pesapal payment
+        const pesapalApiUrl = process.env.PESAPAL_ENVIRONMENT === 'live'
+            ? 'https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest'
+            : 'https://cybqa.pesapal.com/pesapalv3/api/Transactions/SubmitOrderRequest';
+
+        const pesapalResponse = await axios.post(
+            pesapalApiUrl,
             {
-                tx_ref: txRef,
-                amount: amount,
+                id: merchantRef,
                 currency: 'UGX',
-                network: 'MTN', // or detect from phone number
-                phone_number: phone_number,
-                email: req.user.email || `${phone_number}@gfc.kcca.ug`,
-                fullname: req.user.full_name,
-                client_ip: req.ip,
-                device_fingerprint: req.headers['user-agent'],
-                meta: {
-                    report_id: report_id,
-                    user_id: req.user.id
-                },
-                redirect_url: `${process.env.API_BASE_URL}/api/payments/callback`
+                amount: amount,
+                description: `Garbage collection payment - Report ${report_id}`,
+                callback_url: `${process.env.API_BASE_URL}/api/payments/callback`,
+                notification_id: process.env.PESAPAL_IPN_URL,
+                billing_address: {
+                    phone_number: phone_number,
+                    email_address: req.user.email || `${phone_number}@gfc.kcca.ug`,
+                    country_code: 'UG',
+                    first_name: req.user.full_name.split(' ')[0],
+                    last_name: req.user.full_name.split(' ').slice(1).join(' ') || 'User'
+                }
             },
             {
                 headers: {
-                    'Authorization': `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -121,7 +127,9 @@ router.post('/initiate', authenticateToken, requireUserType('resident'), async (
             message: 'Payment initiated. Please complete on your phone.',
             data: {
                 payment_id: payment.id,
-                tx_ref: txRef,
+                merchant_reference: merchantRef,
+                redirect_url: pesapalResponse.data.redirect_url,
+                order_tracking_id: pesapalResponse.data.order_tracking_id
                 flutterwave_response: flwResponse.data
             }
         });

@@ -9,7 +9,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 
 **Garbage Free City (GFC)** empowers residents to report garbage pile-ups and enables efficient collection through:
 - **GPS-based reporting** with real-time location tracking
-- **Mobile Money payments** via Flutterwave (MTN & Airtel Money)
+- **Mobile Money payments** via Pesapal (MTN & Airtel Money)
 - **Optimized routing** using PostGIS for nearest collector assignment
 - **SMS notifications** via Africa's Talking
 - **QR code verification** at collection points
@@ -28,7 +28,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 - **Supabase (PostgreSQL + PostGIS)** - Database with geospatial support
 
 ### Integrations
-- **Flutterwave** - Mobile Money payments (webhooks)
+- **Pesapal** - Mobile Money payments (MTN & Airtel Money)
 - **Africa's Talking** - SMS notifications
 - **Google Maps API** - Route optimization
 
@@ -54,7 +54,7 @@ GFC/
 │   │   ├── paymentRoutes.js                 # Payment initiation
 │   │   └── collectorRoutes.js               # Collector operations
 │   ├── webhooks/
-│   │   └── flutterwaveWebhook.js            # Payment webhook handler
+│   │   └── pesapalWebhook.js                # Payment webhook handler
 │   ├── .env.example                         # Environment variables template
 │   ├── package.json                         # Node dependencies
 │   └── server.js                            # Main Express server
@@ -127,20 +127,20 @@ GFC/
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_KEY=your-service-role-key
 
-   # Flutterwave
-   FLUTTERWAVE_SECRET_HASH=your-webhook-secret
-   FLUTTERWAVE_PUBLIC_KEY=FLWPUBK-xxxxx
-   FLUTTERWAVE_SECRET_KEY=FLWSECK-xxxxx
+   # Pesapal
+   PESAPAL_CONSUMER_KEY=your-consumer-key
+   PESAPAL_CONSUMER_SECRET=your-consumer-secret
+   PESAPAL_ENVIRONMENT=sandbox
 
    # Africa's Talking
    AFRICAS_TALKING_API_KEY=your-api-key
    AFRICAS_TALKING_USERNAME=KCCA
    ```
 
-3. Configure Flutterwave webhook:
-   - Go to [Flutterwave Dashboard](https://dashboard.flutterwave.com/dashboard/settings/webhooks)
-   - Add URL: `https://your-domain.com/webhooks/flutterwave`
-   - Copy secret hash to `.env`
+3. Configure Pesapal IPN:
+   - Go to [Pesapal Dashboard](https://www.pesapal.com)
+   - Register IPN URL: `https://your-domain.com/webhooks/pesapal`
+   - IPN will send payment notifications
 
 ### 3. Mobile App Setup (Flutter)
 
@@ -187,7 +187,7 @@ GFC/
 - Fields: `id`, `resident_id`, `location`, `status`, `payment_amount`
 
 #### **payments**
-- Mobile Money transactions via Flutterwave
+- Mobile Money transactions via Pesapal
 - Stores webhook responses
 - Fields: `id`, `report_id`, `transaction_id`, `payment_status`, `amount`
 
@@ -211,12 +211,11 @@ SELECT calculate_distance(location1, location2);
 ## Security Notes
 
 ### Webhook Verification
-The Flutterwave webhook verifies authenticity using:
+Pesapal sends IPN (Instant Payment Notification) via GET request:
 ```javascript
-const signature = req.headers['verif-hash'];
-if (signature !== process.env.FLUTTERWAVE_SECRET_HASH) {
-    return res.status(401).json({ error: 'Invalid signature' });
-}
+const { OrderTrackingId, OrderMerchantReference } = req.query;
+// Verify transaction status with Pesapal API
+const transaction = await getTransactionStatus(OrderTrackingId);
 ```
 
 ### Environment Variables
@@ -259,14 +258,14 @@ node server.js
 # Terminal 2: Expose to internet
 ngrok http 3000
 
-# Copy ngrok URL to Flutterwave dashboard
-# URL: https://abc123.ngrok.io/webhooks/flutterwave
+# Register IPN URL in Pesapal dashboard
+# URL: https://abc123.ngrok.io/webhooks/pesapal
 ```
 
 ### Test Payment Flow
 1. Create garbage report via app
-2. Initiate Flutterwave payment
-3. Watch webhook logs: `POST /webhooks/flutterwave`
+2. Initiate Pesapal payment
+3. Watch webhook logs: `GET /webhooks/pesapal`
 4. Verify payment status updated in Supabase
 5. Check SMS sent to resident
 

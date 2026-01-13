@@ -17,7 +17,7 @@ const authRoutes = require('./routes/authRoutes');
 const garbageReportRoutes = require('./routes/garbageReportRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const collectorRoutes = require('./routes/collectorRoutes');
-const flutterwaveWebhook = require('./webhooks/flutterwaveWebhook');
+const pesapalWebhook = require('./webhooks/pesapalWebhook');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -77,7 +77,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/collectors', collectorRoutes);
 
 // Webhook Routes (no rate limiting for webhooks)
-app.use('/webhooks', flutterwaveWebhook.router);
+app.use('/webhooks', pesapalWebhook.router);
 
 // 404 Handler
 app.use('*', (req, res) => {
@@ -111,7 +111,7 @@ app.listen(PORT, () => {
     console.log('');
     console.log('   📱 Integrations:');
     console.log(`   ✓ Supabase: ${process.env.SUPABASE_URL ? 'Connected' : '❌ Not configured'}`);
-    console.log(`   ✓ Flutterwave: ${process.env.FLUTTERWAVE_SECRET_KEY ? 'Connected' : '❌ Not configured'}`);
+    console.log(`   ✓ Pesapal: ${process.env.PESAPAL_CONSUMER_KEY ? 'Connected' : '❌ Not configured'}`);
     console.log(`   ✓ Africa\'s Talking: ${process.env.AFRICAS_TALKING_API_KEY ? 'Connected' : '❌ Not configured'}`);
     console.log('');
     console.log('   Press Ctrl+C to stop');
