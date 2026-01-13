@@ -12,20 +12,28 @@ services:
       - key: PORT
         value: 3000
       - key: JWT_SECRET
-        generateValue: true
+        value: gfc-kampala-2026-super-secret-jwt-key-change-this
+      - key: JWT_EXPIRES_IN
+        value: 7d
       - key: SUPABASE_URL
-        sync: false
+        value: https://qehvenhovfvbrbwqxbdi.supabase.co
       - key: SUPABASE_ANON_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaHZlbmhvdmZ2YnJid3F4YmRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTY0OTUsImV4cCI6MjA4Mzg3MjQ5NX0.zJUWcRBKnTrbHg3j848KDwsP-I7LIi1bd-nbTxq691E
       - key: SUPABASE_SERVICE_KEY
-        sync: false
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaHZlbmhvdmZ2YnJid3F4YmRpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI5NjQ5NSwiZXhwIjoyMDgzODcyNDk1fQ.zUOX5HQhygUQpYFnxAyAQKhZ8KNfvGuIL931pHZXq38
       - key: PESAPAL_CONSUMER_KEY
-        sync: false
+        value: E9e9Ckd+A5sRDoL3vhYYVHQbgIh0l8w4
       - key: PESAPAL_CONSUMER_SECRET
-        sync: false
+        value: 5dNfZmQUm2zz+FXCDi8jOqRHNdY=
       - key: PESAPAL_ENVIRONMENT
         value: sandbox
       - key: AFRICAS_TALKING_API_KEY
-        sync: false
+        value: your-api-key
       - key: AFRICAS_TALKING_USERNAME
-        sync: false
+        value: sandbox
+      - key: AFRICAS_TALKING_SENDER_ID
+        value: KCCA-GFC
+      - key: GOOGLE_MAPS_API_KEY
+        value: your-google-maps-api-key
+      - key: DEFAULT_COLLECTION_FEE
+        value: 5000
