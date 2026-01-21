@@ -400,7 +400,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                   
                   // Volume selection
                   DropdownButtonFormField<String>(
-                    value: _selectedVolume,
+                    initialValue: _selectedVolume,
                     decoration: const InputDecoration(
                       labelText: 'Estimated Volume',
                       border: OutlineInputBorder(),

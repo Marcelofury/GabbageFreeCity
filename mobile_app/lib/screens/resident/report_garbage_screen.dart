@@ -137,7 +137,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _selectedVolume,
+                    initialValue: _selectedVolume,
                     decoration: const InputDecoration(labelText: 'Volume'),
                     items: const [
                       DropdownMenuItem(value: 'small', child: Text('Small')),
