@@ -8,10 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
-  // Change this to your actual backend URL
-  static const String BASE_URL = 'http://10.0.2.2:3000/api'; // Android emulator
-  // static const String BASE_URL = 'http://localhost:3000/api'; // iOS simulator
-  // static const String BASE_URL = 'https://your-backend.com/api'; // Production
+  // Backend deployed on Render
+  static const String BASE_URL = 'https://gabbagefreecity.onrender.com/api';
   
   final _storage = const FlutterSecureStorage();
 
