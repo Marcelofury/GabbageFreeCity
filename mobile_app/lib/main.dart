@@ -1,10 +1,10 @@
-/**
- * Main Entry Point for GFC Flutter App
- */
+/// Main Entry Point for GFC Flutter App
+library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -18,11 +18,17 @@ import 'providers/location_provider.dart';
 import 'providers/report_provider.dart';
 
 void main() {
-  runApp(const GarbageFreeCityApp());
+  runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
+    runApp(const GarbageFreeCityApp());
+  }, (error, stack) {
+    debugPrint('Error: $error');
+    debugPrint('Stack: $stack');
+  });
 }
 
 class GarbageFreeCityApp extends StatelessWidget {
-  const GarbageFreeCityApp({Key? key}) : super(key: key);
+  const GarbageFreeCityApp({super.key});
 
   @override
   Widget build(BuildContext context) {
