@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
 class CollectorHomeScreen extends StatelessWidget {
-  const CollectorHomeScreen({Key? key}) : super(key: key);
+  const CollectorHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
