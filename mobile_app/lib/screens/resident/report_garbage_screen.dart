@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -13,7 +14,7 @@ class ReportGarbageScreen extends StatefulWidget {
 }
 
 class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   final _descriptionController = TextEditingController();
   String _selectedVolume = 'medium';
 
@@ -26,7 +27,6 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   @override
   void dispose() {
     _descriptionController.dispose();
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -93,32 +93,43 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
             flex: 2,
             child: locationProvider.isLoadingLocation
                 ? const Center(child: CircularProgressIndicator())
-                : GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: locationProvider.currentPosition != null
+                : FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: locationProvider.currentPosition != null
                           ? LatLng(
                               locationProvider.currentPosition!.latitude,
                               locationProvider.currentPosition!.longitude,
                             )
                           : const LatLng(0.3476, 32.6169), // Nakawa
-                      zoom: 15.0,
+                      initialZoom: 15.0,
+                      minZoom: 5.0,
+                      maxZoom: 18.0,
                     ),
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                    },
-                    markers: locationProvider.currentPosition != null
-                        ? {
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.kcca.garbage_free_city',
+                      ),
+                      if (locationProvider.currentPosition != null)
+                        MarkerLayer(
+                          markers: [
                             Marker(
-                              markerId: const MarkerId('garbage_location'),
-                              position: LatLng(
+                              point: LatLng(
                                 locationProvider.currentPosition!.latitude,
                                 locationProvider.currentPosition!.longitude,
                               ),
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.location_pin,
+                                color: Colors.red,
+                                size: 40,
+                              ),
                             ),
-                          }
-                        : {},
+                          ],
+                        ),
+                    ],
                   ),
           ),
           Expanded(
