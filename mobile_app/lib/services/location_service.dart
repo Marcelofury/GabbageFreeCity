@@ -1,21 +1,20 @@
-/**
- * GARBAGE FREE CITY (GFC) - LOCATION SERVICE
- * 
- * Flutter service for capturing user's current GPS location
- * and sending it to the Node.js backend.
- * 
- * This service handles:
- * - Getting current GPS coordinates using geolocator
- * - Requesting location permissions
- * - Displaying location on Google Maps
- * - Sending location data to backend API
- * 
- * Packages required:
- * - geolocator: ^10.1.0
- * - google_maps_flutter: ^2.5.0
- * - http: ^1.1.0
- * - permission_handler: ^11.0.1
- */
+/// GARBAGE FREE CITY (GFC) - LOCATION SERVICE
+/// 
+/// Flutter service for capturing user's current GPS location
+/// and sending it to the Node.js backend.
+/// 
+/// This service handles:
+/// - Getting current GPS coordinates using geolocator
+/// - Requesting location permissions
+/// - Displaying location on Google Maps
+/// - Sending location data to backend API
+/// 
+/// Packages required:
+/// - geolocator: ^10.1.0
+/// - google_maps_flutter: ^2.5.0
+/// - http: ^1.1.0
+/// - permission_handler: ^11.0.1
+library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -205,7 +204,7 @@ class LocationService {
 /// Example widget showing how to use LocationService
 /// to report garbage pile-ups
 class ReportGarbageScreen extends StatefulWidget {
-  const ReportGarbageScreen({Key? key}) : super(key: key);
+  const ReportGarbageScreen({super.key});
   
   @override
   State<ReportGarbageScreen> createState() => _ReportGarbageScreenState();
@@ -290,7 +289,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
       );
       
       // Get auth token (from your auth service)
-      final authToken = 'your-auth-token'; // TODO: Get from AuthService
+      const authToken = 'your-auth-token'; // TODO: Get from AuthService
       
       // Submit report
       final reportId = await LocationService.reportGarbagePileUp(
