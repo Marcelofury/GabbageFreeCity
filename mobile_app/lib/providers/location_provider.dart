@@ -1,7 +1,6 @@
-/**
- * Location Provider
- * Manages location services and permissions
- */
+/// Location Provider
+/// Manages location services and permissions
+library;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
