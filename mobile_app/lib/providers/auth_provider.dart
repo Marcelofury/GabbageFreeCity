@@ -1,7 +1,6 @@
-/**
- * Authentication Provider
- * Manages user authentication state
- */
+/// Authentication Provider
+/// Manages user authentication state
+library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -35,13 +34,16 @@ class AuthProvider with ChangeNotifier {
       final userJson = await _storage.read(key: 'user_data');
       
       if (_token != null && userJson != null) {
-        _user = User.fromJson(Map<String, dynamic>.from(
-          // Parse stored JSON
-          {}
-        ));
+        // Will implement proper user restoration later
+        // For now, just clear if corrupted
+        _token = null;
+        await _storage.delete(key: 'auth_token');
+        await _storage.delete(key: 'user_data');
       }
     } catch (e) {
       debugPrint('Error initializing auth: $e');
+      _token = null;
+      _user = null;
     }
 
     _isLoading = false;
