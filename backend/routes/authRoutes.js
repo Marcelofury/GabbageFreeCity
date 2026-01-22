@@ -16,10 +16,10 @@ const registerSchema = Joi.object({
         .messages({ 'string.pattern.base': 'Phone must be in format +256XXXXXXXXX' }),
     full_name: Joi.string().min(2).max(100).required(),
     user_type: Joi.string().valid('resident', 'collector').required(),
-    email: Joi.string().email().optional(),
-    area: Joi.string().max(100).optional(),
-    latitude: Joi.number().min(-90).max(90).optional(),
-    longitude: Joi.number().min(-180).max(180).optional()
+    email: Joi.string().email().allow(null, '').optional(),
+    area: Joi.string().max(100).allow(null, '').optional(),
+    latitude: Joi.number().min(-90).max(90).allow(null).optional(),
+    longitude: Joi.number().min(-180).max(180).allow(null).optional()
 });
 
 const loginSchema = Joi.object({
