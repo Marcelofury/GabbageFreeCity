@@ -65,6 +65,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('Attempting to register with: $phoneNumber');
       final response = await _apiService.register(
         phoneNumber: phoneNumber,
         fullName: fullName,
@@ -74,6 +75,8 @@ class AuthProvider with ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
       );
+
+      debugPrint('Registration response: $response');
 
       if (response['success']) {
         _user = User.fromJson(response['data']['user']);
@@ -93,6 +96,7 @@ class AuthProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
+      debugPrint('Registration error: $e');
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
