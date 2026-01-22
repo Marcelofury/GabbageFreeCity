@@ -1,7 +1,6 @@
-/**
- * API Service
- * Handles all HTTP requests to the backend
- */
+/// API Service
+/// Handles all HTTP requests to the backend
+library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
