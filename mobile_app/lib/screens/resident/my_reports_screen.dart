@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../providers/report_provider.dart';
 
 class MyReportsScreen extends StatefulWidget {
-  const MyReportsScreen({Key? key}) : super(key: key);
+  const MyReportsScreen({super.key});
 
   @override
   State<MyReportsScreen> createState() => _MyReportsScreenState();
