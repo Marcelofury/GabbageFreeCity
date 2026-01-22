@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
 class ResidentHomeScreen extends StatelessWidget {
-  const ResidentHomeScreen({Key? key}) : super(key: key);
+  const ResidentHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
