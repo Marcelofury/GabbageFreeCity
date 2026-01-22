@@ -6,7 +6,7 @@ import '../../providers/report_provider.dart';
 import '../../providers/auth_provider.dart';
 
 class ReportGarbageScreen extends StatefulWidget {
-  const ReportGarbageScreen({Key? key}) : super(key: key);
+  const ReportGarbageScreen({super.key});
 
   @override
   State<ReportGarbageScreen> createState() => _ReportGarbageScreenState();
