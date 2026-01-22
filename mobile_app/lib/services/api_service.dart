@@ -32,21 +32,28 @@ class ApiService {
     double? latitude,
     double? longitude,
   }) async {
-    final response = await http.post(
-      Uri.parse('$BASE_URL/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone_number': phoneNumber,
-        'full_name': fullName,
-        'user_type': userType,
-        'email': email,
-        'area': area,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'phone_number': phoneNumber,
+          'full_name': fullName,
+          'user_type': userType,
+          'email': email,
+          'area': area,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      );
 
-    return jsonDecode(response.body);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e. Check internet connection.',
+      };
+    }
   }
 
   /// Login user
