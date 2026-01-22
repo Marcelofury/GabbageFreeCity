@@ -8,11 +8,11 @@ A mobile-first waste management solution connecting Kampala residents with garba
 ## Overview
 
 **Garbage Free City (GFC)** empowers residents to report garbage pile-ups and enables efficient collection through:
-- **GPS-based reporting** with real-time location tracking
+- **GPS-based reporting** with real-time location tracking using OpenStreetMap
 - **Mobile Money payments** via Pesapal (MTN & Airtel Money)
 - **Optimized routing** using PostGIS for nearest collector assignment
 - **SMS notifications** via Africa's Talking
-- **QR code verification** at collection points
+- **Interactive mapping** with OpenStreetMap (no billing required)
 
 ---
 
@@ -20,7 +20,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 
 ### Frontend
 - **Flutter** - Cross-platform mobile app (iOS/Android)
-- **google_maps_flutter** - Location visualization
+- **OpenStreetMap** - Free interactive maps via flutter_map
 - **geolocator** - GPS coordinate capture
 
 ### Backend
@@ -30,7 +30,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 ### Integrations
 - **Pesapal** - Mobile Money payments (MTN & Airtel Money)
 - **Africa's Talking** - SMS notifications
-- **Google Maps API** - Route optimization
+- **OpenStreetMap** - Free, no billing required, better Uganda coverage
 
 ---
 
@@ -149,7 +149,8 @@ GFC/
    # pubspec.yaml
    dependencies:
      geolocator: ^10.1.0
-     google_maps_flutter: ^2.5.0
+     flutter_map: ^6.1.0
+     latlong2: ^0.9.0
      http: ^1.1.0
      permission_handler: ^11.0.1
    ```
@@ -158,11 +159,9 @@ GFC/
    ```xml
    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
    <uses-permission android:name="android.permission.INTERNET" />
-   
-   <meta-data
-       android:name="com.google.android.geo.API_KEY"
-       android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
    ```
+   
+   **Note:** No API key required! OpenStreetMap is free and open-source.
 
 3. Configure iOS (`ios/Runner/Info.plist`):
    ```xml
