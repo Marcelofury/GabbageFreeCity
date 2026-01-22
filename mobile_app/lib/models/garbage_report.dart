@@ -1,6 +1,5 @@
-/**
- * Garbage Report Model
- */
+/// Garbage Report Model
+library;
 
 class GarbageReport {
   final String id;
