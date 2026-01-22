@@ -1,7 +1,6 @@
-/**
- * Report Provider
- * Manages garbage reports state
- */
+/// Report Provider
+/// Manages garbage reports state
+library;
 
 import 'package:flutter/foundation.dart';
 import '../models/garbage_report.dart';
