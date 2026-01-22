@@ -1,6 +1,5 @@
-/**
- * User Model
- */
+/// User Model
+library;
 
 class User {
   final String id;
