@@ -5,6 +5,7 @@ library;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   // Backend deployed on Render
@@ -33,6 +34,8 @@ class ApiService {
     double? longitude,
   }) async {
     try {
+      debugPrint('Connecting to: $BASE_URL/auth/register');
+      
       final response = await http.post(
         Uri.parse('$BASE_URL/auth/register'),
         headers: {'Content-Type': 'application/json'},
@@ -45,13 +48,29 @@ class ApiService {
           'latitude': latitude,
           'longitude': longitude,
         }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout - check internet connection');
+        },
       );
 
-      return jsonDecode(response.body);
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode} - ${response.body}',
+        };
+      }
     } catch (e) {
+      debugPrint('Registration network error: $e');
       return {
         'success': false,
-        'message': 'Network error: $e. Check internet connection.',
+        'message': 'Cannot connect to server. Check your internet connection and try again.',
       };
     }
   }
