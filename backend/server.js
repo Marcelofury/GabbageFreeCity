@@ -30,6 +30,9 @@ const PORT = process.env.PORT || 3000;
 // MIDDLEWARE
 // ============================================
 
+// Trust proxy - Required for Render/Heroku deployments
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 
