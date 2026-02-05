@@ -65,17 +65,24 @@ class ReportProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('📋 Fetching user reports...');
       final response = await _apiService.getMyReports();
+      debugPrint('📋 Reports response: ${response['success']}');
 
       if (response['success']) {
-        _reports = (response['data']['reports'] as List)
+        final reportsList = response['data']['reports'] as List;
+        debugPrint('📋 Found ${reportsList.length} reports');
+        _reports = reportsList
             .map((json) => GarbageReport.fromJson(json))
             .toList();
+        _error = null;
       } else {
-        _error = response['message'];
+        _error = response['message'] ?? 'Failed to load reports';
+        debugPrint('❌ Reports error: $_error');
       }
     } catch (e) {
-      _error = e.toString();
+      _error = 'Failed to load reports: ${e.toString()}';
+      debugPrint('❌ Reports exception: $e');
     }
 
     _isLoading = false;
