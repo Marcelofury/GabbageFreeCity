@@ -124,8 +124,8 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
         actions: [
           // Show location status
           if (locationProvider.currentPosition != null)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
+            const Padding(
+              padding: EdgeInsets.all(8.0),
               child: Icon(
                 Icons.gps_fixed,
                 color: Colors.green,
@@ -140,10 +140,10 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
               Expanded(
                 flex: 2,
                 child: locationProvider.isLoadingLocation
-                    ? Center(
+                    ? const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             CircularProgressIndicator(),
                             SizedBox(height: 16),
                             Text('Getting your location...'),

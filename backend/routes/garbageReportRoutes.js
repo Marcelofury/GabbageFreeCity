@@ -105,9 +105,28 @@ router.get('/my-reports', authenticateToken, requireUserType('resident'), async 
             throw error;
         }
 
+        // For each report, extract coordinates using raw SQL
+        const reportsWithCoords = await Promise.all(reports.map(async (report) => {
+            try {
+                const { data: coords } = await supabase
+                    .rpc('exec_sql', { 
+                        sql: `SELECT ST_Y(location::geometry) as lat, ST_X(location::geometry) as lng FROM garbage_reports WHERE id = '${report.id}'`
+                    });
+                
+                return {
+                    ...report,
+                    latitude: coords?.[0]?.lat || null,
+                    longitude: coords?.[0]?.lng || null
+                };
+            } catch (err) {
+                // Return report with null coordinates if extraction fails
+                return { ...report, latitude: null, longitude: null };
+            }
+        }));
+
         res.json({
             success: true,
-            data: { reports }
+            data: { reports: reportsWithCoords }
         });
 
     } catch (error) {

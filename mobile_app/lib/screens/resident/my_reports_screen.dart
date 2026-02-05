@@ -35,7 +35,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
                       Text(
                         reportProvider.error!,
@@ -51,13 +51,13 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   ),
                 )
               : reportProvider.reports.isEmpty
-                  ? Center(
+                  ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          const Text(
+                          SizedBox(height: 16),
+                          Text(
                             'No reports yet.\nTap Report Garbage to get started.',
                             textAlign: TextAlign.center,
                           ),
