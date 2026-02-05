@@ -33,15 +33,22 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   }
 
   Future<void> _loadLocation() async {
+    if (!mounted) return;
+    
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
     final position = await locationProvider.getCurrentLocation();
     
     // Move map to user's actual location once loaded
     if (position != null && mounted) {
-      _mapController.move(
-        LatLng(position.latitude, position.longitude),
-        16.0,
-      );
+      // Wait for next frame to ensure map is initialized
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _mapController.mapEventStream.hasListener) {
+          _mapController.move(
+            LatLng(position.latitude, position.longitude),
+            16.0,
+          );
+        }
+      });
     } else if (locationProvider.error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

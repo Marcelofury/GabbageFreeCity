@@ -122,14 +122,33 @@ class ApiService {
 
   /// Get user's reports
   Future<Map<String, dynamic>> getMyReports() async {
-    final headers = await _getHeaders();
-    
-    final response = await http.get(
-      Uri.parse('$BASE_URL/garbage-reports/my-reports'),
-      headers: headers,
-    );
+    try {
+      final headers = await _getHeaders();
+      debugPrint('🔍 Fetching reports from: $BASE_URL/garbage-reports/my-reports');
+      
+      final response = await http.get(
+        Uri.parse('$BASE_URL/garbage-reports/my-reports'),
+        headers: headers,
+      );
 
-    return jsonDecode(response.body);
+      debugPrint('📡 Reports API status: ${response.statusCode}');
+      debugPrint('📡 Reports API response: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to fetch reports: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      debugPrint('❌ getMyReports error: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
   }
 
   /// Initiate payment
