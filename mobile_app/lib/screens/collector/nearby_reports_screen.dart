@@ -201,6 +201,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
               ],
             ),
           ),
+        ],
       ),
     );
   }
