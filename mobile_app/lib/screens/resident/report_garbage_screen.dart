@@ -89,8 +89,10 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Report Garbage')),
-      body: Column(
+      body: Stack(
         children: [
+          Column(
+            children: [
           Expanded(
             flex: 2,
             child: locationProvider.isLoadingLocation
@@ -104,14 +106,18 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                               locationProvider.currentPosition!.longitude,
                             )
                           : const LatLng(0.3476, 32.6169), // Nakawa
-                      initialZoom: 15.0,
+                      initialZoom: 16.0,
                       minZoom: 5.0,
-                      maxZoom: 18.0,
+                      maxZoom: 19.0,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all,
+                      ),
                     ),
                     children: [
                       TileLayer(
                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.kcca.garbage_free_city',
+                        maxNativeZoom: 19,
                       ),
                       if (locationProvider.currentPosition != null)
                         MarkerLayer(
@@ -131,8 +137,54 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                             ),
                           ],
                         ),
+                      // OSM Attribution (Required)
+                      RichAttributionWidget(
+                        attributions: [
+                          TextSourceAttribution(
+                            'OpenStreetMap contributors',
+                            onTap: () => {},
+                          ),
+                        ],
+                      ),
                     ],
                   ),
+            ),
+          ),
+          // Map Controls
+          Positioned(
+            right: 16,
+            top: 16,
+            child: Column(
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'zoom_in',
+                  onPressed: () {
+                    _mapController.move(
+                      _mapController.camera.center,
+                      _mapController.camera.zoom + 1,
+                    );
+                  },
+                  child: const Icon(Icons.add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'zoom_out',
+                  onPressed: () {
+                    _mapController.move(
+                      _mapController.camera.center,
+                      _mapController.camera.zoom - 1,
+                    );
+                  },
+                  child: const Icon(Icons.remove),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'my_location',
+                  onPressed: _loadLocation,
+                  child: const Icon(Icons.my_location),
+                ),
+              ],
+            ),
           ),
           Expanded(
             flex: 1,
@@ -180,6 +232,8 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                 ],
               ),
             ),
+          ),
+            ],
           ),
         ],
       ),

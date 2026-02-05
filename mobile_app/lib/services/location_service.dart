@@ -6,12 +6,13 @@
 /// This service handles:
 /// - Getting current GPS coordinates using geolocator
 /// - Requesting location permissions
-/// - Displaying location on Google Maps
+/// - Displaying location on OpenStreetMap
 /// - Sending location data to backend API
 /// 
 /// Packages required:
 /// - geolocator: ^10.1.0
-/// - google_maps_flutter: ^2.5.0
+/// - flutter_map: ^6.1.0
+/// - latlong2: ^0.9.0
 /// - http: ^1.1.0
 /// - permission_handler: ^11.0.1
 library;
@@ -19,7 +20,7 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
 /// LocationService handles all location-related operations
@@ -191,16 +192,19 @@ class LocationService {
     }
   }
   
-  /// Convert Position to LatLng for Google Maps
+  /// Convert Position to LatLng for flutter_map
   static LatLng positionToLatLng(Position position) {
     return LatLng(position.latitude, position.longitude);
   }
 }
 
 // ============================================
-// EXAMPLE USAGE IN A FLUTTER WIDGET
+// EXAMPLE USAGE NOTES
 // ============================================
+// See screens/resident/report_garbage_screen.dart for implementation
+// using flutter_map and OpenStreetMap tiles
 
+/*
 /// Example widget showing how to use LocationService
 /// to report garbage pile-ups
 class ReportGarbageScreen extends StatefulWidget {
@@ -444,6 +448,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
     super.dispose();
   }
 }
+*/
 
 // ============================================
 // PUBSPEC.YAML DEPENDENCIES
@@ -459,8 +464,9 @@ dependencies:
   geolocator: ^10.1.0
   permission_handler: ^11.0.1
   
-  # Maps
-  google_maps_flutter: ^2.5.0
+  # Maps (OpenStreetMap)
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
   
   # HTTP requests
   http: ^1.1.0
@@ -475,10 +481,7 @@ dependencies:
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.INTERNET" />
 
-# Add Google Maps API key:
-<meta-data
-    android:name="com.google.android.geo.API_KEY"
-    android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
+# Note: OpenStreetMap doesn't require API keys!
 
 # iOS configuration (ios/Runner/Info.plist):
 # Add these keys:
@@ -488,10 +491,7 @@ dependencies:
 <key>NSLocationAlwaysUsageDescription</key>
 <string>GFC needs your location to optimize collector routes</string>
 
-# Add Google Maps API key in ios/Runner/AppDelegate.swift:
-import GoogleMaps
-
-GMSServices.provideAPIKey("YOUR_GOOGLE_MAPS_API_KEY")
+# Note: OpenStreetMap doesn't require API keys!
 */
 
 // ============================================
