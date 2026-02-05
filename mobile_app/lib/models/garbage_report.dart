@@ -37,16 +37,36 @@ class GarbageReport {
   });
 
   factory GarbageReport.fromJson(Map<String, dynamic> json) {
+    // Extract latitude and longitude - handle both direct fields and PostGIS location
+    double? latitude;
+    double? longitude;
+    
+    // Check if lat/lng are provided as separate fields
+    if (json['latitude'] != null && json['longitude'] != null) {
+      latitude = (json['latitude'] is num) ? json['latitude'].toDouble() : null;
+      longitude = (json['longitude'] is num) ? json['longitude'].toDouble() : null;
+    } else if (json['location'] != null) {
+      // Try to extract from PostGIS format
+      try {
+        latitude = _extractLatitude(json['location']);
+        longitude = _extractLongitude(json['location']);
+      } catch (e) {
+        // If extraction fails, use default coordinates (Kampala center)
+        latitude = 0.3476;
+        longitude = 32.5825;
+      }
+    }
+    
     return GarbageReport(
       id: json['id'],
       residentId: json['resident_id'],
-      latitude: _extractLatitude(json['location']),
-      longitude: _extractLongitude(json['location']),
-      addressDescription: json['address_description'],
-      garbageType: json['garbage_type'],
-      estimatedVolume: json['estimated_volume'],
+      latitude: latitude ?? 0.3476,
+      longitude: longitude ?? 32.5825,
+      addressDescription: json['address_description'] ?? 'Unknown location',
+      garbageType: json['garbage_type'] ?? 'mixed',
+      estimatedVolume: json['estimated_volume'] ?? 'medium',
       photoUrl: json['photo_url'],
-      status: json['status'],
+      status: json['status'] ?? 'pending',
       paymentRequired: json['payment_required'] ?? true,
       paymentAmount: (json['payment_amount'] ?? 5000).toDouble(),
       assignedCollectorId: json['assigned_collector_id'],
@@ -60,22 +80,34 @@ class GarbageReport {
     );
   }
 
-  static double _extractLatitude(dynamic location) {
+  static double? _extractLatitude(dynamic location) {
     // Handle PostGIS point format or direct values
     if (location is String) {
-      // Parse "POINT(lng lat)" format
-      final coords = location.replaceAll(RegExp(r'[POINT()]'), '').split(' ');
-      return double.parse(coords[1]);
+      try {
+        // Parse "POINT(lng lat)" format
+        final coords = location.replaceAll(RegExp(r'[POINT()]'), '').split(' ');
+        if (coords.length >= 2) {
+          return double.tryParse(coords[1]);
+        }
+      } catch (e) {
+        return null;
+      }
     }
-    return 0.0;
+    return null;
   }
 
-  static double _extractLongitude(dynamic location) {
+  static double? _extractLongitude(dynamic location) {
     if (location is String) {
-      final coords = location.replaceAll(RegExp(r'[POINT()]'), '').split(' ');
-      return double.parse(coords[0]);
+      try {
+        final coords = location.replaceAll(RegExp(r'[POINT()]'), '').split(' ');
+        if (coords.length >= 2) {
+          return double.tryParse(coords[0]);
+        }
+      } catch (e) {
+        return null;
+      }
     }
-    return 0.0;
+    return null;
   }
 
   String get statusDisplay {
