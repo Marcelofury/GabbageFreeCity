@@ -101,12 +101,7 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'Scan QR Code',
                     color: Colors.orange,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('QR Scanner coming soon!'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
+                      Navigator.pushNamed(context, '/qr-scanner');
                     },
                   ),
                   _buildMenuCard(
@@ -115,12 +110,7 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'History',
                     color: Colors.purple,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('History feature coming soon!'),
-                          backgroundColor: Colors.purple,
-                        ),
-                      );
+                      Navigator.pushNamed(context, '/history');
                     },
                   ),
                 ],
