@@ -34,7 +34,27 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
 
   Future<void> _loadLocation() async {
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    await locationProvider.getCurrentLocation();
+    final position = await locationProvider.getCurrentLocation();
+    
+    // Move map to user's actual location once loaded
+    if (position != null && mounted) {
+      _mapController.move(
+        LatLng(position.latitude, position.longitude),
+        16.0,
+      );
+    } else if (locationProvider.error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(locationProvider.error!),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: 'Retry',
+            onPressed: _loadLocation,
+            textColor: Colors.white,
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _submitReport() async {
@@ -88,7 +108,20 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
     final reportProvider = Provider.of<ReportProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Garbage')),
+      appBar: AppBar(
+        title: const Text('Report Garbage'),
+        actions: [
+          // Show location status
+          if (locationProvider.currentPosition != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Icon(
+                Icons.gps_fixed,
+                color: Colors.green,
+              ),
+            ),
+        ],
+      ),
       body: Stack(
         children: [
           Column(
@@ -96,7 +129,21 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
               Expanded(
                 flex: 2,
                 child: locationProvider.isLoadingLocation
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text('Getting your location...'),
+                            SizedBox(height: 8),
+                            Text(
+                              'Please ensure GPS is enabled',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      )
                     : FlutterMap(
                         mapController: _mapController,
                         options: MapOptions(
