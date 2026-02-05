@@ -64,17 +64,22 @@ class LocationProvider with ChangeNotifier {
         return null;
       }
 
+      debugPrint('🌍 Fetching current location...');
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        timeLimit: const Duration(seconds: 15),
       );
 
+      debugPrint('✅ Location obtained: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+      debugPrint('   Accuracy: ${_currentPosition!.accuracy}m');
+      
       _isLoadingLocation = false;
       notifyListeners();
       return _currentPosition;
       
     } catch (e) {
-      _error = 'Failed to get location: $e';
+      debugPrint('❌ Location error: $e');
+      _error = 'Failed to get location. Please ensure GPS is enabled and try again.';
       _isLoadingLocation = false;
       notifyListeners();
       return null;
