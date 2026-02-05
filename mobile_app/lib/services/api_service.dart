@@ -97,17 +97,24 @@ class ApiService {
   }) async {
     final headers = await _getHeaders();
     
+    // Build request body, only include photo_url if not null
+    final Map<String, dynamic> requestBody = {
+      'latitude': latitude,
+      'longitude': longitude,
+      'address_description': addressDescription,
+      'estimated_volume': estimatedVolume,
+      'garbage_type': garbageType,
+    };
+    
+    // Only add photo_url if it's not null (backend expects string or omitted)
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      requestBody['photo_url'] = photoUrl;
+    }
+    
     final response = await http.post(
       Uri.parse('$BASE_URL/garbage-reports'),
       headers: headers,
-      body: jsonEncode({
-        'latitude': latitude,
-        'longitude': longitude,
-        'address_description': addressDescription,
-        'estimated_volume': estimatedVolume,
-        'garbage_type': garbageType,
-        'photo_url': photoUrl,
-      }),
+      body: jsonEncode(requestBody),
     );
 
     return jsonDecode(response.body);
