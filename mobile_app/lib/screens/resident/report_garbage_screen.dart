@@ -93,64 +93,115 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
         children: [
           Column(
             children: [
-          Expanded(
-            flex: 2,
-            child: locationProvider.isLoadingLocation
-                ? const Center(child: CircularProgressIndicator())
-                : FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: locationProvider.currentPosition != null
-                          ? LatLng(
-                              locationProvider.currentPosition!.latitude,
-                              locationProvider.currentPosition!.longitude,
-                            )
-                          : const LatLng(0.3476, 32.6169), // Nakawa
-                      initialZoom: 16.0,
-                      minZoom: 5.0,
-                      maxZoom: 19.0,
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.all,
-                      ),
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.kcca.garbage_free_city',
-                        maxNativeZoom: 19,
-                      ),
-                      if (locationProvider.currentPosition != null)
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: LatLng(
-                                locationProvider.currentPosition!.latitude,
-                                locationProvider.currentPosition!.longitude,
-                              ),
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
-                                Icons.location_pin,
-                                color: Colors.red,
-                                size: 40,
-                              ),
-                            ),
-                          ],
+              Expanded(
+                flex: 2,
+                child: locationProvider.isLoadingLocation
+                    ? const Center(child: CircularProgressIndicator())
+                    : FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: locationProvider.currentPosition != null
+                              ? LatLng(
+                                  locationProvider.currentPosition!.latitude,
+                                  locationProvider.currentPosition!.longitude,
+                                )
+                              : const LatLng(0.3476, 32.6169), // Nakawa
+                          initialZoom: 16.0,
+                          minZoom: 5.0,
+                          maxZoom: 19.0,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.all,
+                          ),
                         ),
-                      // OSM Attribution (Required)
-                      RichAttributionWidget(
-                        attributions: [
-                          TextSourceAttribution(
-                            'OpenStreetMap contributors',
-                            onTap: () => {},
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.kcca.garbage_free_city',
+                            maxNativeZoom: 19,
+                          ),
+                          if (locationProvider.currentPosition != null)
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(
+                                    locationProvider.currentPosition!.latitude,
+                                    locationProvider.currentPosition!.longitude,
+                                  ),
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          // OSM Attribution (Required)
+                          RichAttributionWidget(
+                            attributions: [
+                              TextSourceAttribution(
+                                'OpenStreetMap contributors',
+                                onTap: () => {},
+                              ),
+                            ],
                           ),
                         ],
                       ),
+              ),
+              Expanded(
+                flex: 1,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _descriptionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Location Description',
+                          hintText: 'e.g., Near Nakawa Market',
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedVolume,
+                        decoration: const InputDecoration(labelText: 'Volume'),
+                        items: const [
+                          DropdownMenuItem(value: 'small', child: Text('Small')),
+                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                          DropdownMenuItem(value: 'large', child: Text('Large')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedVolume = value!;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: reportProvider.isLoading ? null : _submitReport,
+                          child: reportProvider.isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Submit Report (UGX 5,000)'),
+                        ),
+                      ),
                     ],
                   ),
-            ),
+                ),
+              ),
+            ],
           ),
-          // Map Controls
+          // Map Controls - Now properly positioned outside Column
           Positioned(
             right: 16,
             top: 16,
@@ -185,55 +236,6 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                 ),
               ],
             ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Location Description',
-                      hintText: 'e.g., Near Nakawa Market',
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedVolume,
-                    decoration: const InputDecoration(labelText: 'Volume'),
-                    items: const [
-                      DropdownMenuItem(value: 'small', child: Text('Small')),
-                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                      DropdownMenuItem(value: 'large', child: Text('Large')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedVolume = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: reportProvider.isLoading ? null : _submitReport,
-                    child: reportProvider.isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Submit Report (UGX 5,000)'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-            ],
           ),
         ],
       ),
