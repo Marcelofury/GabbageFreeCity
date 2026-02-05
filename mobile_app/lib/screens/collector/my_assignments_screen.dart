@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MyAssignmentsScreen extends StatelessWidget {
   const MyAssignmentsScreen({super.key});
@@ -231,13 +232,39 @@ class MyAssignmentsScreen extends StatelessWidget {
     }
   }
 
-  void _showDirections(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Google Maps navigation integration coming soon!'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+  void _showDirections(BuildContext context) async {
+    // Mock coordinates - in real app, get from assignment
+    const lat = 0.3476;
+    const lng = 32.6169;
+    
+    final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open maps. Please install Google Maps.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation coordinates: $lat, $lng'),
+            action: SnackBarAction(
+              label: 'Copy',
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _updateStatus(BuildContext context, String currentStatus) {
