@@ -40,13 +40,17 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
     
     // Move map to user's actual location once loaded
     if (position != null && mounted) {
-      // Wait for next frame to ensure map is initialized
+      // Wait for next frame to ensure map is ready
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _mapController.mapEventStream.hasListener) {
-          _mapController.move(
-            LatLng(position.latitude, position.longitude),
-            16.0,
-          );
+        if (mounted) {
+          try {
+            _mapController.move(
+              LatLng(position.latitude, position.longitude),
+              16.0,
+            );
+          } catch (e) {
+            debugPrint('⚠️ Could not move map: $e');
+          }
         }
       });
     } else if (locationProvider.error != null && mounted) {
