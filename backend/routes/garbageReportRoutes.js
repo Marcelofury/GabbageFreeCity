@@ -16,7 +16,7 @@ const createReportSchema = Joi.object({
     address_description: Joi.string().max(500).required(),
     garbage_type: Joi.string().valid('mixed', 'plastic', 'organic', 'electronic', 'hazardous').default('mixed'),
     estimated_volume: Joi.string().valid('small', 'medium', 'large').required(),
-    photo_url: Joi.string().uri().optional()
+    photo_url: Joi.string().uri().allow('', null).optional()
 });
 
 /**
