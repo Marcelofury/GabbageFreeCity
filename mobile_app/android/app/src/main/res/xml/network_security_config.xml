@@ -13,4 +13,12 @@
             <certificates src="user" />
         </trust-anchors>
     </domain-config>
+    <!-- OpenStreetMap tiles -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">tile.openstreetmap.org</domain>
+        <domain includeSubdomains="true">openstreetmap.org</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
