@@ -83,7 +83,7 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'Nearby Reports',
                     color: Colors.blue,
                     onTap: () {
-                      // Navigate to map view
+                      Navigator.pushNamed(context, '/nearby-reports');
                     },
                   ),
                   _buildMenuCard(
@@ -92,7 +92,7 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'My Assignments',
                     color: Colors.green,
                     onTap: () {
-                      // Navigate to assignments
+                      Navigator.pushNamed(context, '/my-assignments');
                     },
                   ),
                   _buildMenuCard(
@@ -101,7 +101,12 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'Scan QR Code',
                     color: Colors.orange,
                     onTap: () {
-                      // Navigate to QR scanner
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('QR Scanner coming soon!'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
                     },
                   ),
                   _buildMenuCard(
@@ -110,7 +115,12 @@ class CollectorHomeScreen extends StatelessWidget {
                     title: 'History',
                     color: Colors.purple,
                     onTap: () {
-                      // Navigate to history
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('History feature coming soon!'),
+                          backgroundColor: Colors.purple,
+                        ),
+                      );
                     },
                   ),
                 ],

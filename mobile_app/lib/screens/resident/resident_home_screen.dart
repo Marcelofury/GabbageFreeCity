@@ -98,7 +98,7 @@ class ResidentHomeScreen extends StatelessWidget {
                     title: 'Payments',
                     color: Colors.orange,
                     onTap: () {
-                      // Navigate to payments
+                      Navigator.pushNamed(context, '/payments');
                     },
                   ),
                   _buildMenuCard(
@@ -107,7 +107,7 @@ class ResidentHomeScreen extends StatelessWidget {
                     title: 'About KCCA',
                     color: Colors.purple,
                     onTap: () {
-                      // Navigate to about
+                      Navigator.pushNamed(context, '/about');
                     },
                   ),
                 ],

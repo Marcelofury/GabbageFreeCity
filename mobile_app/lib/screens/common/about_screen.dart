@@ -1,0 +1,216 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class AboutScreen extends StatelessWidget {
+  const AboutScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('About KCCA'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.account_balance,
+                      size: 64,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Kampala Capital City Authority',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Garbage Free City Initiative',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildSection(
+              title: 'Our Mission',
+              content:
+                  'To provide efficient and sustainable waste management services to all residents of Kampala, ensuring a clean and healthy environment for everyone.',
+              icon: Icons.flag,
+            ),
+            const SizedBox(height: 16),
+            _buildSection(
+              title: 'How It Works',
+              content:
+                  '1. Report garbage pile-ups using the app\n'
+                  '2. Pay the collection fee via mobile money\n'
+                  '3. Our collectors will be assigned to your location\n'
+                  '4. Track collection progress in real-time',
+              icon: Icons.info_outline,
+            ),
+            const SizedBox(height: 16),
+            _buildSection(
+              title: 'Collection Fees',
+              content:
+                  'Small pile: UGX 3,000\n'
+                  'Medium pile: UGX 5,000\n'
+                  'Large pile: UGX 10,000\n\n'
+                  'Payment goes directly to supporting our waste management infrastructure.',
+              icon: Icons.money,
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            const Text(
+              'Contact Information',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildContactTile(
+              icon: Icons.phone,
+              title: 'Call Center',
+              subtitle: '+256 800 800 800',
+              onTap: () => _launchPhone('+256800800800'),
+            ),
+            _buildContactTile(
+              icon: Icons.email,
+              title: 'Email',
+              subtitle: 'info@kcca.go.ug',
+              onTap: () => _launchEmail('info@kcca.go.ug'),
+            ),
+            _buildContactTile(
+              icon: Icons.web,
+              title: 'Website',
+              subtitle: 'www.kcca.go.ug',
+              onTap: () => _launchUrl('https://www.kcca.go.ug'),
+            ),
+            _buildContactTile(
+              icon: Icons.location_on,
+              title: 'Address',
+              subtitle: 'City Hall, Kampala, Uganda',
+              onTap: null,
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    'App Version 1.0.0',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '© 2026 KCCA. All rights reserved.',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required String content,
+    required IconData icon,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              content,
+              style: const TextStyle(height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: Colors.green.shade100,
+        child: Icon(icon, color: Colors.green),
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: onTap != null
+          ? const Icon(Icons.arrow_forward_ios, size: 16)
+          : null,
+      onTap: onTap,
+    );
+  }
+
+  Future<void> _launchPhone(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _launchEmail(String email) async {
+    final uri = Uri.parse('mailto:$email');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}

@@ -12,7 +12,11 @@ import 'screens/auth/register_screen.dart';
 import 'screens/resident/resident_home_screen.dart';
 import 'screens/resident/report_garbage_screen.dart';
 import 'screens/resident/my_reports_screen.dart';
+import 'screens/resident/payments_screen.dart';
+import 'screens/common/about_screen.dart';
 import 'screens/collector/collector_home_screen.dart';
+import 'screens/collector/nearby_reports_screen.dart';
+import 'screens/collector/my_assignments_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/report_provider.dart';
@@ -93,7 +97,11 @@ class GarbageFreeCityApp extends StatelessWidget {
           '/resident-home': (context) => const ResidentHomeScreen(),
           '/report-garbage': (context) => const ReportGarbageScreen(),
           '/my-reports': (context) => const MyReportsScreen(),
+          '/payments': (context) => const PaymentsScreen(),
+          '/about': (context) => const AboutScreen(),
           '/collector-home': (context) => const CollectorHomeScreen(),
+          '/nearby-reports': (context) => const NearbyReportsScreen(),
+          '/my-assignments': (context) => const MyAssignmentsScreen(),
         },
       ),
     );
