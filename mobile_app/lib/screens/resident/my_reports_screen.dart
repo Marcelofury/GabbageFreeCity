@@ -30,14 +30,41 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       appBar: AppBar(title: const Text('My Reports')),
       body: reportProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : reportProvider.reports.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No reports yet.\nTap + to report garbage.',
-                    textAlign: TextAlign.center,
+          : reportProvider.error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(
+                        reportProvider.error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadReports,
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
                 )
-              : RefreshIndicator(
+              : reportProvider.reports.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No reports yet.\nTap Report Garbage to get started.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
                   onRefresh: _loadReports,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
