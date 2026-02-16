@@ -11,7 +11,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 - **GPS-based reporting** with real-time location tracking using OpenStreetMap
 - **Mobile Money payments** via Pesapal (MTN & Airtel Money)
 - **Optimized routing** using PostGIS for nearest collector assignment
-- **SMS notifications** via Africa's Talking
+- **SMS notifications** via Mambo SMS (Uganda)
 - **Interactive mapping** with OpenStreetMap (no billing required)
 
 ---
@@ -29,7 +29,7 @@ A mobile-first waste management solution connecting Kampala residents with garba
 
 ### Integrations
 - **Pesapal** - Mobile Money payments (MTN & Airtel Money)
-- **Africa's Talking** - SMS notifications
+- **Mambo SMS** - SMS notifications (Uganda)
 - **OpenStreetMap** - Free, no billing required, better Uganda coverage
 
 ---
@@ -44,7 +44,7 @@ GFC/
 ├── backend/
 │   ├── config/
 │   │   ├── supabase.js                      # Supabase client config
-│   │   └── africasTalking.js                # SMS service config
+│   │   └── smsService.js                    # Mambo SMS service config
 │   ├── middleware/
 │   │   ├── auth.js                          # JWT authentication
 │   │   └── errorHandler.js                  # Global error handler
@@ -132,9 +132,10 @@ GFC/
    PESAPAL_CONSUMER_SECRET=your-consumer-secret
    PESAPAL_ENVIRONMENT=sandbox
 
-   # Africa's Talking
-   AFRICAS_TALKING_API_KEY=your-api-key
-   AFRICAS_TALKING_USERNAME=KCCA
+   # Mambo SMS (Uganda)
+   MAMBO_SMS_USERNAME=your-mambo-username
+   MAMBO_SMS_PASSWORD=your-mambo-password
+   MAMBO_SMS_SENDER_ID=KCCA-GFC
    ```
 
 3. Configure Pesapal IPN:
@@ -233,10 +234,12 @@ const transaction = await getTransactionStatus(OrderTrackingId);
 - **Airtel Money** (*185#) - 30%+ market share
 - Typical transaction: UGX 5,000 - 50,000
 
-### SMS (Africa's Talking)
+### SMS (Mambo SMS)
 - Critical for users without data
+- Popular Ugandan SMS gateway
 - Use approved sender ID: "KCCA-GFC"
 - Keep messages concise (160 chars)
+- Sign up at: https://mambosms.com
 
 ### Kampala Divisions
 - **Central** (0.3163°N, 32.5822°E)
