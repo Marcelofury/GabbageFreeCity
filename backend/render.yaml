@@ -28,11 +28,13 @@ services:
         value: 5dNfZmQUm2zz+FXCDi8jOqRHNdY=
       - key: PESAPAL_ENVIRONMENT
         value: sandbox
-      - key: AFRICAS_TALKING_API_KEY
-        value: your-api-key
-      - key: AFRICAS_TALKING_USERNAME
-        value: sandbox
-      - key: AFRICAS_TALKING_SENDER_ID
+      - key: MAMBO_SMS_API_KEY
+        value: $2y$10$8axz7UvOgk8B6wvrlF36Eu5DSa/7QRCqb1ObdXtnGSbEyvvmWna8m
+      - key: MAMBO_SMS_USERNAME
+        value: 0783858472
+      - key: MAMBO_SMS_PASSWORD
+        value: wap7trick
+      - key: MAMBO_SMS_SENDER_ID
         value: KCCA-GFC
       - key: GOOGLE_MAPS_API_KEY
         value: your-google-maps-api-key
