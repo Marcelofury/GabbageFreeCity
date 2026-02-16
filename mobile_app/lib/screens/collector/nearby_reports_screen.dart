@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/location_provider.dart';
 
 class NearbyReportsScreen extends StatefulWidget {
@@ -213,12 +214,17 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
   void _showReportDetails(Map<String, dynamic> report) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 const Icon(Icons.delete, color: Colors.orange, size: 32),
@@ -233,10 +239,13 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Volume: ${report['volume']}',
                         style: TextStyle(color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -250,7 +259,11 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Payment', style: TextStyle(color: Colors.grey[600])),
+                      Text(
+                        'Payment',
+                        style: TextStyle(color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       Text(
                         'UGX ${report['amount']}',
                         style: const TextStyle(
@@ -258,6 +271,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -266,10 +280,15 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Distance', style: TextStyle(color: Colors.grey[600])),
+                      Text(
+                        'Distance',
+                        style: TextStyle(color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const Text(
                         '~2.5 km',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -285,8 +304,14 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                       Navigator.pop(context);
                       _openMaps(report['latitude'], report['longitude']);
                     },
-                    icon: const Icon(Icons.directions),
-                    label: const Text('Directions'),
+                    icon: const Icon(Icons.directions, size: 18),
+                    label: const Text(
+                      'Directions',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -296,8 +321,14 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                       Navigator.pop(context);
                       _acceptAssignment(report);
                     },
-                    icon: const Icon(Icons.check),
-                    label: const Text('Accept'),
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text(
+                      'Accept',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    ),
                   ),
                 ),
               ],
@@ -305,24 +336,37 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   void _openMaps(double lat, double lng) async {
-    // Open in external maps app
-    final url = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening directions to location...'),
-        action: SnackBarAction(
-          label: 'Open',
-          onPressed: () {
-            // In real app, use url_launcher
-            // launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-          },
-        ),
-      ),
-    );
+    // Open in OpenStreetMap with directions
+    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
+    
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Opening map to: $lat, $lng'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Coordinates: $lat, $lng'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _acceptAssignment(Map<String, dynamic> report) {
