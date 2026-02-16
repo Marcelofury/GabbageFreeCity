@@ -122,51 +122,90 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             final isPending = report.status == 'pending';
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: isPending
-                                      ? Colors.orange.withOpacity(0.2)
-                                      : Colors.green.withOpacity(0.2),
-                                  child: Icon(
-                                    isPending ? Icons.pending : Icons.check_circle,
-                                    color: isPending ? Colors.orange : Colors.green,
-                                  ),
-                                ),
-                                title: Text(report.addressDescription),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Row(
                                   children: [
-                                    Text('Volume: ${report.estimatedVolume}'),
-                                    Text(
-                                      isPending ? 'Payment Pending' : 'Payment Complete',
-                                      style: TextStyle(
+                                    CircleAvatar(
+                                      backgroundColor: isPending
+                                          ? Colors.orange.withOpacity(0.2)
+                                          : Colors.green.withOpacity(0.2),
+                                      child: Icon(
+                                        isPending ? Icons.pending : Icons.check_circle,
                                         color: isPending ? Colors.orange : Colors.green,
-                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      'UGX ${report.paymentAmount.toStringAsFixed(0)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            report.addressDescription,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Volume: ${report.estimatedVolume}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            isPending ? 'Payment Pending' : 'Payment Complete',
+                                            style: TextStyle(
+                                              color: isPending ? Colors.orange : Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    if (isPending)
-                                      TextButton(
-                                        onPressed: () => _initiatePayment(report.id),
-                                        child: const Text('Pay Now'),
-                                      ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'UGX ${report.paymentAmount.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        if (isPending) ...[
+                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            height: 32,
+                                            child: ElevatedButton(
+                                              onPressed: () => _initiatePayment(report.id),
+                                              style: ElevatedButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 4,
+                                                ),
+                                                textStyle: const TextStyle(fontSize: 12),
+                                              ),
+                                              child: const Text('Pay Now'),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),
