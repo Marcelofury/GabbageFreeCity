@@ -8,7 +8,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const { supabase } = require('../config/supabase');
-const { sendSMS } = require('../config/africasTalking');
+const { sendSMS } = require('../config/smsService');
 
 // Validation schemas
 const registerSchema = Joi.object({
