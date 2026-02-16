@@ -115,7 +115,7 @@ app.listen(PORT, () => {
     console.log('   📱 Integrations:');
     console.log(`   ✓ Supabase: ${process.env.SUPABASE_URL ? 'Connected' : '❌ Not configured'}`);
     console.log(`   ✓ Pesapal: ${process.env.PESAPAL_CONSUMER_KEY ? 'Connected' : '❌ Not configured'}`);
-    console.log(`   ✓ Africa\'s Talking: ${process.env.AFRICAS_TALKING_API_KEY ? 'Connected' : '❌ Not configured'}`);
+    console.log(`   ✓ Mambo SMS: ${process.env.MAMBO_SMS_USERNAME ? 'Connected' : '❌ Not configured'}`);
     console.log('');
     console.log('   Press Ctrl+C to stop');
     console.log('   ========================================');
