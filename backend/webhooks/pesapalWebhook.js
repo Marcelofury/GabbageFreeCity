@@ -73,27 +73,15 @@ async function getTransactionStatus(orderTrackingId) {
     }
 }
 
+// Import SMS service
+const { sendSMS } = require('../config/smsService');
+
 /**
- * Send SMS notification using Africa's Talking
+ * Send SMS notification using Mambo SMS
  */
 async function sendSMSNotification(phoneNumber, message) {
     try {
-        const credentials = {
-            apiKey: process.env.AFRICAS_TALKING_API_KEY,
-            username: process.env.AFRICAS_TALKING_USERNAME
-        };
-        
-        const AfricasTalking = require('africastalking')(credentials);
-        const sms = AfricasTalking.SMS;
-        
-        const options = {
-            to: [phoneNumber],
-            message: message,
-            from: 'KCCA-GFC'
-        };
-        
-        const result = await sms.send(options);
-        console.log('📱 SMS sent:', result);
+        const result = await sendSMS(phoneNumber, message);
         return result;
         
     } catch (error) {
