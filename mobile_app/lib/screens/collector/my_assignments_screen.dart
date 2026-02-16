@@ -156,7 +156,7 @@ class MyAssignmentsScreen extends StatelessWidget {
                       ],
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
     );
@@ -237,7 +237,8 @@ class MyAssignmentsScreen extends StatelessWidget {
     const lat = 0.3476;
     const lng = 32.6169;
     
-    final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    // Use OpenStreetMap for directions
+    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
     
     try {
       if (await canLaunchUrl(url)) {
@@ -245,9 +246,19 @@ class MyAssignmentsScreen extends StatelessWidget {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not open maps. Please install Google Maps.'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Text('Opening OpenStreetMap directions...'),
+              action: SnackBarAction(
+                label: 'Coordinates',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Location: $lat, $lng'),
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }
@@ -256,9 +267,9 @@ class MyAssignmentsScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Navigation coordinates: $lat, $lng'),
+            content: const Text('Directions to: $lat, $lng'),
             action: SnackBarAction(
-              label: 'Copy',
+              label: 'OK',
               onPressed: () {},
             ),
           ),
