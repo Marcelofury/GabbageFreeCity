@@ -68,38 +68,44 @@ class HistoryScreen extends StatelessWidget {
               ],
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatColumn(
-                  'Total\nCollections',
-                  '${completedCollections.length}',
-                  Icons.check_circle,
+                Expanded(
+                  child: _buildStatColumn(
+                    'Total\nCollections',
+                    '${completedCollections.length}',
+                    Icons.check_circle,
+                  ),
                 ),
                 Container(
                   width: 1,
                   height: 50,
                   color: Colors.white.withOpacity(0.3),
                 ),
-                _buildStatColumn(
-                  'Total\nEarnings',
-                  'UGX ${_calculateTotal(completedCollections)}',
-                  Icons.monetization_on,
+                Expanded(
+                  child: _buildStatColumn(
+                    'Total\nEarnings',
+                    'UGX ${_calculateTotal(completedCollections)}',
+                    Icons.monetization_on,
+                  ),
                 ),
                 Container(
                   width: 1,
                   height: 50,
                   color: Colors.white.withOpacity(0.3),
                 ),
-                _buildStatColumn(
-                  'Avg\nRating',
-                  '${_calculateAvgRating(completedCollections).toStringAsFixed(1)} ⭐',
-                  Icons.star,
+                Expanded(
+                  child: _buildStatColumn(
+                    'Avg\nRating',
+                    '${_calculateAvgRating(completedCollections).toStringAsFixed(1)} ⭐',
+                    Icons.star,
+                  ),
                 ),
               ],
             ),
           ),
           // Filter chips
-          Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
@@ -140,7 +146,11 @@ class HistoryScreen extends StatelessWidget {
                       backgroundColor: Colors.green.shade100,
                       child: const Icon(Icons.check, color: Colors.green),
                     ),
-                    title: Text(collection['address'] as String),
+                    title: Text(
+                      collection['address'] as String,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -149,11 +159,17 @@ class HistoryScreen extends StatelessWidget {
                             collection['completedAt'] as DateTime,
                           ),
                           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text('Volume: ${collection['volume']}'),
+                            Flexible(
+                              child: Text(
+                                'Volume: ${collection['volume']}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             ...List.generate(
                               collection['rating'] as int,
@@ -163,23 +179,28 @@ class HistoryScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'UGX ${collection['amount']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.green,
+                    trailing: SizedBox(
+                      width: 80,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'UGX ${collection['amount']}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.green,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'ID: ${collection['id']}',
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                        ),
-                      ],
+                          Text(
+                            'ID: ${collection['id']}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
                     ),
                     onTap: () => _showCollectionDetails(context, collection),
                   ),
@@ -199,9 +220,12 @@ class HistoryScreen extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -209,9 +233,10 @@ class HistoryScreen extends StatelessWidget {
         Text(
           label,
           textAlign: TextAlign.center,
+          overflow: TextOverflow.visible,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ],
