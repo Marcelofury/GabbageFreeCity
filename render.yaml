@@ -12,33 +12,37 @@ services:
       - key: PORT
         value: 3000
       - key: JWT_SECRET
-        value: gfc-kampala-2026-super-secret-jwt-key-change-this
+        sync: false
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: SUPABASE_URL
-        value: https://qehvenhovfvbrbwqxbdi.supabase.co
-      - key: SUPABASE_ANON_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaHZlbmhvdmZ2YnJid3F4YmRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyOTY0OTUsImV4cCI6MjA4Mzg3MjQ5NX0.zJUWcRBKnTrbHg3j848KDwsP-I7LIi1bd-nbTxq691E
-      - key: SUPABASE_SERVICE_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlaHZlbmhvdmZ2YnJid3F4YmRpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODI5NjQ5NSwiZXhwIjoyMDgzODcyNDk1fQ.zUOX5HQhygUQpYFnxAyAQKhZ8KNfvGuIL931pHZXq38
-      - key: PESAPAL_CONSUMER_KEY
-        value: E9e9Ckd+A5sRDoL3vhYYVHQbgIh0l8w4
-      - key: PESAPAL_CONSUMER_SECRET
-        value: 5dNfZmQUm2zz+FXCDi8jOqRHNdY=
-      - key: PESAPAL_ENVIRONMENT
-        value: sandbox
-      - key: API_BASE_URL
-        generateValue: true
-      - key: PESAPAL_IPN_URL
         sync: false
-      - key: MAMBO_SMS_API_KEY
-        value: $2y$10$8axz7UvOgk8B6wvrlF36Eu5DSa/7QRCqb1ObdXtnGSbEyvvmWna8m
-      - key: MAMBO_SMS_USERNAME
-        value: 0783858472
-      - key: MAMBO_SMS_PASSWORD
-        value: wap7trick
-      - key: MAMBO_SMS_SENDER_ID
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: APP_BASE_URL
+        generateValue: true
+      - key: MARZPAY_API_KEY
+        sync: false
+      - key: MARZPAY_API_SECRET
+        sync: false
+      - key: MARZPAY_API_URL
+        value: https://wallet.wearemarz.com/api/v1
+      - key: API_BASE_URL
+        sync: false
+      - key: EGO_SMS_API_USERNAME
+        sync: false
+      - key: EGO_SMS_API_KEY
+        sync: false
+      - key: EGO_SMS_SENDER_ID
         value: KCCA-GFC
+      - key: EGO_SMS_USE_SANDBOX
+        value: true
+      - key: EGO_SMS_TEST_NUMBERS
+        value: +256783858472,+256785510666
+      - key: EGO_SMS_FORCE_TEST_MODE
+        value: false
       - key: GOOGLE_MAPS_API_KEY
         value: your-google-maps-api-key
       - key: DEFAULT_COLLECTION_FEE

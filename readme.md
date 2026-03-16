@@ -3,15 +3,63 @@
 
 A mobile-first waste management solution connecting Kampala residents with garbage collectors through real-time GPS tracking, mobile money payments, and optimized route planning.
 
+## MarzPay Payments (Current)
+
+The backend now uses MarzPay for Mobile Money collections in Uganda.
+
+- Supported providers: MTN and Airtel Uganda
+- Initiation endpoint: POST /api/payments/initiate
+- Callback endpoint: POST /api/payments/marzpay/callback
+
+Required environment variables:
+
+```env
+MARZPAY_API_KEY=your-marzpay-api-key
+MARZPAY_API_SECRET=your-marzpay-api-secret
+MARZPAY_API_URL=https://wallet.wearemarz.com/api/v1
+APP_BASE_URL=https://your-backend-domain
+```
+
+Sample initiate request:
+
+```json
+{
+   "orderId": "2762eaf0-b179-4cc0-b2b6-1d595de2cdb5",
+   "method": "marzpay",
+   "phone": "0783858472"
+}
+```
+
+Sample initiate response:
+
+```json
+{
+   "success": true,
+   "message": "Collection initiated successfully.",
+   "data": {
+      "transactionRef": "MARZ-1710583000000-ab12cd34",
+      "status": "pending",
+      "providerRef": "provider-or-reference",
+      "message": "Collection initiated successfully."
+   }
+}
+```
+
+Troubleshooting:
+
+- Wallet balance endpoint fails: whitelist your backend server IP in MarzPay dashboard.
+- Callback not updating records: verify APP_BASE_URL and public endpoint /api/payments/marzpay/callback.
+- Validation errors for phone: use Uganda numbers that normalize to +256XXXXXXXXX and MTN/Airtel prefixes only.
+
 ---
 
 ## Overview
 
 **Garbage Free City (GFC)** empowers residents to report garbage pile-ups and enables efficient collection through:
 - **GPS-based reporting** with real-time location tracking using OpenStreetMap
-- **Mobile Money payments** via Pesapal (MTN & Airtel Money)
+- **Mobile Money payments** via MarzPay (MTN & Airtel Money)
 - **Optimized routing** using PostGIS for nearest collector assignment
-- **SMS notifications** via Mambo SMS (Uganda)
+- **SMS notifications** via EGO Comms SDK (Uganda)
 - **Interactive mapping** with OpenStreetMap (no billing required)
 
 ---
@@ -28,8 +76,8 @@ A mobile-first waste management solution connecting Kampala residents with garba
 - **Supabase (PostgreSQL + PostGIS)** - Database with geospatial support
 
 ### Integrations
-- **Pesapal** - Mobile Money payments (MTN & Airtel Money)
-- **Mambo SMS** - SMS notifications (Uganda)
+- **MarzPay** - Mobile Money payments (MTN & Airtel Money)
+- **EGO SMS (Comms SDK)** - SMS notifications (Uganda)
 - **OpenStreetMap** - Free, no billing required, better Uganda coverage
 
 ---
@@ -127,21 +175,22 @@ GFC/
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_KEY=your-service-role-key
 
-   # Pesapal
-   PESAPAL_CONSUMER_KEY=your-consumer-key
-   PESAPAL_CONSUMER_SECRET=your-consumer-secret
-   PESAPAL_ENVIRONMENT=sandbox
+   # MarzPay
+   MARZPAY_API_URL=https://wallet.wearemarz.com/api/v1
+   MARZPAY_API_KEY=your-marzpay-api-key
+   MARZPAY_API_SECRET=your-marzpay-api-secret
+   MARZPAY_CALLBACK_URL=https://your-backend-domain.com/api/payments/marzpay/callback
 
-   # Mambo SMS (Uganda)
-   MAMBO_SMS_USERNAME=your-mambo-username
-   MAMBO_SMS_PASSWORD=your-mambo-password
-   MAMBO_SMS_SENDER_ID=KCCA-GFC
+   # EGO SMS (Uganda)
+   EGO_SMS_API_USERNAME=your-ego-api-username
+   EGO_SMS_API_KEY=your-ego-api-key
+   EGO_SMS_SENDER_ID=KCCA-GFC
    ```
 
-3. Configure Pesapal IPN:
-   - Go to [Pesapal Dashboard](https://www.pesapal.com)
-   - Register IPN URL: `https://your-domain.com/webhooks/pesapal`
-   - IPN will send payment notifications
+3. Configure MarzPay callback:
+   - Set `APP_BASE_URL` to your backend public URL
+   - Ensure callback endpoint is public: `/api/payments/marzpay/callback`
+   - Whitelist your backend server IP in MarzPay dashboard for restricted actions (for example wallet balance)
 
 ### 3. Mobile App Setup (Flutter)
 
@@ -187,7 +236,7 @@ GFC/
 - Fields: `id`, `resident_id`, `location`, `status`, `payment_amount`
 
 #### **payments**
-- Mobile Money transactions via Pesapal
+- Mobile Money transactions via MarzPay
 - Stores webhook responses
 - Fields: `id`, `report_id`, `transaction_id`, `payment_status`, `amount`
 
@@ -211,11 +260,9 @@ SELECT calculate_distance(location1, location2);
 ## Security Notes
 
 ### Webhook Verification
-Pesapal sends IPN (Instant Payment Notification) via GET request:
+MarzPay sends payment callback updates to:
 ```javascript
-const { OrderTrackingId, OrderMerchantReference } = req.query;
-// Verify transaction status with Pesapal API
-const transaction = await getTransactionStatus(OrderTrackingId);
+POST /api/payments/marzpay/callback
 ```
 
 ### Environment Variables
@@ -234,12 +281,12 @@ const transaction = await getTransactionStatus(OrderTrackingId);
 - **Airtel Money** (*185#) - 30%+ market share
 - Typical transaction: UGX 5,000 - 50,000
 
-### SMS (Mambo SMS)
+### SMS (EGO SMS)
 - Critical for users without data
-- Popular Ugandan SMS gateway
+- Ugandan-compatible SDK integration
 - Use approved sender ID: "KCCA-GFC"
 - Keep messages concise (160 chars)
-- Sign up at: https://mambosms.com
+- Configure API credentials in backend `.env`
 
 ### Kampala Divisions
 - **Central** (0.3163°N, 32.5822°E)
@@ -260,14 +307,14 @@ node server.js
 # Terminal 2: Expose to internet
 ngrok http 3000
 
-# Register IPN URL in Pesapal dashboard
-# URL: https://abc123.ngrok.io/webhooks/pesapal
+# Use callback URL in MarzPay dashboard
+# URL: https://abc123.ngrok.io/api/payments/marzpay/callback
 ```
 
 ### Test Payment Flow
 1. Create garbage report via app
-2. Initiate Pesapal payment
-3. Watch webhook logs: `GET /webhooks/pesapal`
+2. Initiate MarzPay payment
+3. Watch callback logs: `POST /api/payments/marzpay/callback`
 4. Verify payment status updated in Supabase
 5. Check SMS sent to resident
 

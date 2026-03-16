@@ -5,8 +5,18 @@ yarn-error.log
 
 # Environment files
 .env
+.env.*
 .env.local
 .env.*.local
+**/.env
+**/.env.*
+
+# Secrets and keys
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
 
 # OS files
 .DS_Store
