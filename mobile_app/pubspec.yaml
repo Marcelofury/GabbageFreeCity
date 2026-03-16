@@ -36,6 +36,7 @@ dependencies:
   # Image Handling
   image_picker: ^1.0.4
   cached_network_image: ^3.3.0
+  mobile_scanner: ^5.2.3
   
   # Utils
   intl: ^0.18.1
@@ -46,6 +47,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.jpg"
+  adaptive_icon_background: "#8BC34A"  # Green color
+  adaptive_icon_foreground: "assets/icons/app_icon.jpg"
 
 flutter:
   uses-material-design: true
