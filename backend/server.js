@@ -17,7 +17,7 @@ const authRoutes = require('./routes/authRoutes');
 const garbageReportRoutes = require('./routes/garbageReportRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const collectorRoutes = require('./routes/collectorRoutes');
-const pesapalWebhook = require('./webhooks/pesapalWebhook');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -78,9 +78,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/garbage-reports', garbageReportRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/collectors', collectorRoutes);
-
-// Webhook Routes (no rate limiting for webhooks)
-app.use('/webhooks', pesapalWebhook.router);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {
@@ -101,6 +99,13 @@ app.use(errorHandler);
 // ============================================
 
 app.listen(PORT, () => {
+    const smsUsername = process.env.EGO_SMS_API_USERNAME || process.env.EGO_SMS_USERNAME;
+    const smsApiKey =
+        process.env.EGO_SMS_API_KEY ||
+        process.env.EGO_SMS_PASSWORD ||
+        process.env.EGO_SMS_API_PASSWORD;
+    const smsMode = String(process.env.EGO_SMS_USE_SANDBOX || '').toLowerCase() === 'true' ? 'sandbox' : 'production';
+
     console.log('');
     console.log('🗑️  ========================================');
     console.log('    GARBAGE FREE CITY (GFC) - BACKEND');
@@ -114,8 +119,8 @@ app.listen(PORT, () => {
     console.log('');
     console.log('   📱 Integrations:');
     console.log(`   ✓ Supabase: ${process.env.SUPABASE_URL ? 'Connected' : '❌ Not configured'}`);
-    console.log(`   ✓ Pesapal: ${process.env.PESAPAL_CONSUMER_KEY ? 'Connected' : '❌ Not configured'}`);
-    console.log(`   ✓ Mambo SMS: ${process.env.MAMBO_SMS_USERNAME ? 'Connected' : '❌ Not configured'}`);
+    console.log(`   ✓ MarzPay: ${process.env.MARZPAY_API_KEY ? 'Configured' : '❌ Not configured'}`);
+    console.log(`   ✓ EGO SMS: ${smsUsername && smsApiKey ? `Configured (${smsMode})` : '❌ Not configured'}`);
     console.log('');
     console.log('   Press Ctrl+C to stop');
     console.log('   ========================================');

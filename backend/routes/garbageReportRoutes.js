@@ -8,6 +8,7 @@ const router = express.Router();
 const Joi = require('joi');
 const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
+const { createNotification } = require('../services/notificationService');
 
 // Validation schema
 const createReportSchema = Joi.object({
@@ -69,6 +70,17 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
                 payment_amount: report.payment_amount,
                 currency: 'UGX'
             }
+        });
+
+        await createNotification({
+            userId: req.user.id,
+            title: 'Report submitted',
+            message: `Your report at ${address_description} was created successfully.`,
+            type: 'report',
+            data: {
+                report_id: report.id,
+                status: report.status,
+            },
         });
 
     } catch (error) {
@@ -249,6 +261,19 @@ router.patch('/:id/assign', authenticateToken, requireUserType('collector'), asy
             data: { report: updatedReport }
         });
 
+        await createNotification({
+            userId: report.resident_id,
+            title: 'Collector assigned',
+            message: 'A collector has been assigned to your garbage report.',
+            type: 'assignment',
+            data: {
+                report_id: id,
+                status: 'assigned',
+                collector_id: req.user.id,
+            },
+            sendSms: true,
+        });
+
     } catch (error) {
         next(error);
     }
@@ -294,6 +319,20 @@ router.patch('/:id/status', authenticateToken, async (req, res, next) => {
             message: 'Status updated',
             data: { report }
         });
+
+        if (report.resident_id) {
+            await createNotification({
+                userId: report.resident_id,
+                title: 'Report status updated',
+                message: `Your report status is now ${status.replace('_', ' ')}.`,
+                type: 'report',
+                data: {
+                    report_id: report.id,
+                    status,
+                },
+                sendSms: status === 'completed',
+            });
+        }
 
     } catch (error) {
         next(error);

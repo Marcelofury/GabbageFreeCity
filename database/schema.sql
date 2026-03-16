@@ -12,6 +12,8 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- =====================================================
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE,
+    password_hash TEXT,
     phone_number VARCHAR(15) UNIQUE NOT NULL, -- Uganda format: +256XXXXXXXXX
     full_name VARCHAR(100) NOT NULL,
     user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('resident', 'collector')),
@@ -38,6 +40,7 @@ CREATE TABLE users (
 -- Create spatial index for faster geographic queries
 CREATE INDEX idx_users_home_location ON users USING GIST(home_location);
 CREATE INDEX idx_users_current_location ON users USING GIST(current_location);
+CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_users_type ON users(user_type);
 
@@ -68,6 +71,9 @@ CREATE TABLE garbage_reports (
     -- Payment tracking
     payment_required BOOLEAN DEFAULT true,
     payment_amount DECIMAL(10, 2) DEFAULT 5000.00, -- Default UGX 5,000
+    payment_status VARCHAR(20) DEFAULT 'pending' CHECK (
+        payment_status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')
+    ),
     
     -- Timestamps
     reported_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -86,21 +92,23 @@ CREATE INDEX idx_garbage_reports_collector ON garbage_reports(assigned_collector
 
 -- =====================================================
 -- PAYMENTS TABLE
--- Tracks Mobile Money payments via Flutterwave
+-- Tracks Mobile Money payments via MarzPay
 -- =====================================================
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     report_id UUID NOT NULL REFERENCES garbage_reports(id) ON DELETE CASCADE,
     resident_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
-    -- Flutterwave transaction details
-    transaction_id VARCHAR(100) UNIQUE, -- Flutterwave transaction ID
-    flw_ref VARCHAR(100) UNIQUE, -- Flutterwave reference
+    -- Transaction details
+    transaction_id VARCHAR(100) UNIQUE, -- Provider transaction ID/reference
+    flw_ref VARCHAR(100) UNIQUE, -- Legacy reference field (kept for compatibility)
+    transaction_ref VARCHAR(120) UNIQUE, -- App transaction reference
+    provider_reference VARCHAR(120), -- Provider callback/reference
     
     -- Payment details
     amount DECIMAL(10, 2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'UGX',
-    payment_method VARCHAR(50) DEFAULT 'mobile_money', -- mobile_money, card
+    payment_method VARCHAR(50) DEFAULT 'marzpay', -- marzpay, mobile_money, card
     phone_number VARCHAR(15), -- Mobile Money number
     
     -- Status tracking
@@ -125,6 +133,7 @@ CREATE INDEX idx_payments_resident ON payments(resident_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);
 CREATE INDEX idx_payments_transaction_id ON payments(transaction_id);
 CREATE INDEX idx_payments_flw_ref ON payments(flw_ref);
+CREATE INDEX idx_payments_provider_reference ON payments(provider_reference);
 
 -- =====================================================
 -- COLLECTION_LOGS TABLE
@@ -161,6 +170,28 @@ CREATE TABLE collection_logs (
 CREATE INDEX idx_collection_logs_report ON collection_logs(report_id);
 CREATE INDEX idx_collection_logs_collector ON collection_logs(collector_id);
 CREATE INDEX idx_collection_logs_location ON collection_logs USING GIST(collection_location);
+
+-- =====================================================
+-- NOTIFICATIONS TABLE
+-- Stores in-app alerts for residents and collectors
+-- =====================================================
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(30) NOT NULL DEFAULT 'system' CHECK (
+        type IN ('payment', 'assignment', 'report', 'collection', 'system')
+    ),
+    is_read BOOLEAN DEFAULT false,
+    data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    read_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_notifications_user ON notifications(user_id);
+CREATE INDEX idx_notifications_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read);
 
 -- =====================================================
 -- USEFUL POSTGIS FUNCTIONS FOR THE APPLICATION

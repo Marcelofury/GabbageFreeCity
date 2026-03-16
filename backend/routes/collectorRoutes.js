@@ -9,6 +9,7 @@ const Joi = require('joi');
 const QRCode = require('qrcode');
 const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
+const { createNotification } = require('../services/notificationService');
 
 /**
  * PATCH /api/collectors/location
@@ -144,6 +145,28 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
             message: 'Collection verified successfully',
             data: { collection_log: collectionLog }
         });
+
+        await createNotification({
+            userId: req.user.id,
+            title: 'Collection logged',
+            message: 'Collection verification has been recorded successfully.',
+            type: 'collection',
+            data: {
+                report_id,
+                collection_log_id: collectionLog.id,
+            },
+        });
+
+        if (report.resident_id) {
+            await createNotification({
+                userId: report.resident_id,
+                title: 'Collection completed',
+                message: 'Your reported garbage has been collected.',
+                type: 'collection',
+                data: { report_id },
+                sendSms: true,
+            });
+        }
 
     } catch (error) {
         next(error);

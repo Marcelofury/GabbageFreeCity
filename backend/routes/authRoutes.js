@@ -7,11 +7,16 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const bcrypt = require('bcryptjs');
 const { supabase } = require('../config/supabase');
 const { sendSMS } = require('../config/smsService');
+const { createNotification } = require('../services/notificationService');
 
 // Validation schemas
 const registerSchema = Joi.object({
+    username: Joi.string().trim().min(3).max(30).pattern(/^[a-zA-Z0-9_.-]+$/).required()
+        .messages({ 'string.pattern.base': 'Username can only contain letters, numbers, _, ., -' }),
+    password: Joi.string().min(8).max(128).required(),
     phone_number: Joi.string().pattern(/^\+256[0-9]{9}$/).required()
         .messages({ 'string.pattern.base': 'Phone must be in format +256XXXXXXXXX' }),
     full_name: Joi.string().min(2).max(100).required(),
@@ -23,7 +28,15 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
+    username: Joi.string().trim().min(3).max(30).required(),
+    password: Joi.string().min(8).max(128).required()
+});
+
+const setPasswordSchema = Joi.object({
+    username: Joi.string().trim().min(3).max(30).required(),
     phone_number: Joi.string().pattern(/^\+256[0-9]{9}$/).required()
+        .messages({ 'string.pattern.base': 'Phone must be in format +256XXXXXXXXX' }),
+    new_password: Joi.string().min(8).max(128).required(),
 });
 
 /**
@@ -41,7 +54,8 @@ router.post('/register', async (req, res, next) => {
             });
         }
 
-        const { phone_number, full_name, user_type, email, area, latitude, longitude } = value;
+        const { username, password, phone_number, full_name, user_type, email, area, latitude, longitude } = value;
+        const normalizedUsername = username.toLowerCase();
 
         // Check if user already exists
         const { data: existingUser } = await supabase
@@ -57,8 +71,25 @@ router.post('/register', async (req, res, next) => {
             });
         }
 
+        const { data: existingUsername } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', normalizedUsername)
+            .single();
+
+        if (existingUsername) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username already taken'
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
         // Prepare user data
         const userData = {
+            username: normalizedUsername,
+            password_hash: passwordHash,
             phone_number,
             full_name,
             user_type,
@@ -96,12 +127,20 @@ router.post('/register', async (req, res, next) => {
             `Welcome to GFC ${full_name}! Your account is ready. Start reporting garbage pile-ups in Kampala. -KCCA GFC`
         );
 
+        await createNotification({
+            userId: newUser.id,
+            title: 'Welcome to GFC',
+            message: `Hello ${newUser.full_name}, your account is active.`,
+            type: 'system',
+        });
+
         res.status(201).json({
             success: true,
             message: 'Registration successful',
             data: {
                 user: {
                     id: newUser.id,
+                    username: newUser.username,
                     phone_number: newUser.phone_number,
                     full_name: newUser.full_name,
                     user_type: newUser.user_type,
@@ -118,7 +157,7 @@ router.post('/register', async (req, res, next) => {
 
 /**
  * POST /api/auth/login
- * Simple phone number login (no password for MVP)
+ * Username + password login
  */
 router.post('/login', async (req, res, next) => {
     try {
@@ -131,19 +170,31 @@ router.post('/login', async (req, res, next) => {
             });
         }
 
-        const { phone_number } = value;
+        const { username, password } = value;
+        const normalizedUsername = username.toLowerCase();
 
         // Find user
         const { data: user, error: fetchError } = await supabase
             .from('users')
             .select('*')
-            .eq('phone_number', phone_number)
+            .eq('username', normalizedUsername)
             .single();
 
         if (fetchError || !user) {
             return res.status(401).json({
                 success: false,
-                message: 'Phone number not registered'
+                message: 'Invalid username or password'
+            });
+        }
+
+        const isValidPassword = user.password_hash
+            ? await bcrypt.compare(password, user.password_hash)
+            : false;
+
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid username or password'
             });
         }
 
@@ -167,6 +218,7 @@ router.post('/login', async (req, res, next) => {
             data: {
                 user: {
                     id: user.id,
+                    username: user.username,
                     phone_number: user.phone_number,
                     full_name: user.full_name,
                     user_type: user.user_type,
@@ -176,8 +228,80 @@ router.post('/login', async (req, res, next) => {
             }
         });
 
+        await createNotification({
+            userId: user.id,
+            title: 'Login successful',
+            message: 'You have signed in to Garbage Free City.',
+            type: 'system',
+        });
+
     } catch (error) {
         next(error);
+    }
+});
+
+/**
+ * POST /api/auth/set-password
+ * Set or reset password for an existing account.
+ */
+router.post('/set-password', async (req, res, next) => {
+    try {
+        const { error, value } = setPasswordSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: error.details[0].message,
+            });
+        }
+
+        const { username, phone_number, new_password } = value;
+        const normalizedUsername = username.toLowerCase();
+
+        const { data: user, error: fetchError } = await supabase
+            .from('users')
+            .select('id, username, full_name, phone_number, is_active')
+            .eq('username', normalizedUsername)
+            .eq('phone_number', phone_number)
+            .single();
+
+        if (fetchError || !user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Account not found for provided username and phone number',
+            });
+        }
+
+        if (!user.is_active) {
+            return res.status(403).json({
+                success: false,
+                message: 'Account is deactivated. Contact KCCA support.',
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(new_password, 10);
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ password_hash: passwordHash })
+            .eq('id', user.id);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        await createNotification({
+            userId: user.id,
+            title: 'Password updated',
+            message: 'Your password was set successfully.',
+            type: 'system',
+        });
+
+        return res.json({
+            success: true,
+            message: 'Password set successfully. You can now login.',
+        });
+    } catch (err) {
+        return next(err);
     }
 });
 

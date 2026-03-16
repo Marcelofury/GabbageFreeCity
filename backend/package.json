@@ -20,6 +20,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.2",
+    "bcryptjs": "^2.4.3",
+    "comms-sdk": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -32,7 +34,12 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "jest": "^30.0.5",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.1.1"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "engines": {
     "node": ">=18.0.0",
