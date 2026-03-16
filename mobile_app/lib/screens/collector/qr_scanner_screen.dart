@@ -1,123 +1,96 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
+import '../../providers/location_provider.dart';
+import '../../services/api_service.dart';
 
-class QRScannerScreen extends StatelessWidget {
+class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
+
+  @override
+  State<QRScannerScreen> createState() => _QRScannerScreenState();
+}
+
+class _QRScannerScreenState extends State<QRScannerScreen> {
+  final MobileScannerController _scannerController = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    facing: CameraFacing.back,
+    torchEnabled: false,
+  );
+
+  bool _isProcessing = false;
+  bool _isTorchOn = false;
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan QR Code'),
+        actions: [
+          IconButton(
+            icon: Icon(_isTorchOn ? Icons.flash_on : Icons.flash_off),
+            onPressed: () {
+              _scannerController.toggleTorch();
+              setState(() => _isTorchOn = !_isTorchOn);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.flip_camera_android),
+            onPressed: () => _scannerController.switchCamera(),
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // QR Scanner placeholder
-                  Container(
-                    width: 250,
-                    height: 250,
+            child: Stack(
+              children: [
+                MobileScanner(
+                  controller: _scannerController,
+                  onDetect: (capture) {
+                    if (_isProcessing) return;
+                    final barcodes = capture.barcodes;
+                    if (barcodes.isEmpty) return;
+                    final raw = barcodes.first.rawValue;
+                    if (raw == null || raw.isEmpty) return;
+                    _handleScannedCode(raw);
+                  },
+                ),
+                Center(
+                  child: Container(
+                    width: 260,
+                    height: 260,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.green, width: 3),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Stack(
-                      children: [
-                        // Corner decorations
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: Colors.green, width: 4),
-                                left: BorderSide(color: Colors.green, width: 4),
-                              ),
-                            ),
+                  ),
+                ),
+                if (_isProcessing)
+                  Container(
+                    color: Colors.black45,
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Colors.white),
+                          SizedBox(height: 12),
+                          Text(
+                            'Verifying collection...',
+                            style: TextStyle(color: Colors.white),
                           ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: Colors.green, width: 4),
-                                right: BorderSide(color: Colors.green, width: 4),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: Colors.green, width: 4),
-                                left: BorderSide(color: Colors.green, width: 4),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: Colors.green, width: 4),
-                                right: BorderSide(color: Colors.green, width: 4),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // QR icon
-                        Center(
-                          child: Icon(
-                            Icons.qr_code_2,
-                            size: 100,
-                            color: Colors.grey[300],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'QR Scanner Ready',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Position QR code within the frame',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      // Simulate QR scan
-                      _simulateScan(context);
-                    },
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Simulate Scan'),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
           Container(
@@ -184,42 +157,113 @@ class QRScannerScreen extends StatelessWidget {
     );
   }
 
-  void _simulateScan(BuildContext context) {
+  Future<void> _handleScannedCode(String rawCode) async {
+    setState(() => _isProcessing = true);
+    await _scannerController.stop();
+
+    String? reportId;
+    try {
+      final decoded = jsonDecode(rawCode);
+      if (decoded is Map<String, dynamic>) {
+        reportId = decoded['report_id']?.toString();
+      }
+    } catch (_) {
+      reportId = rawCode.trim();
+    }
+
+    if (reportId == null || reportId.isEmpty) {
+      _showFailure('Invalid QR content. Could not find report_id.');
+      return;
+    }
+
+    // ignore: use_build_context_synchronously
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final position = await locationProvider.getCurrentLocation();
+    if (!mounted) return;
+
+    if (position == null) {
+      _showFailure(locationProvider.error ?? 'Location is required to verify collection.');
+      return;
+    }
+
+    final api = ApiService();
+    final response = await api.verifyCollection(
+      reportId: reportId,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      qrCodeData: rawCode,
+    );
+
+    if (!mounted) return;
+
+    if (response['success'] == true) {
+      _showSuccess(reportId);
+    } else {
+      _showFailure(response['message']?.toString() ?? 'Verification failed');
+    }
+  }
+
+  void _showSuccess(String reportId) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
             Icon(Icons.check_circle, color: Colors.green),
             SizedBox(width: 8),
-            Text('QR Code Scanned'),
+            Text('Collection Verified'),
           ],
         ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Report ID: #GFC-2024-001'),
-            SizedBox(height: 8),
-            Text('Location: Nakawa Market'),
-            SizedBox(height: 8),
-            Text('Amount: UGX 5,000'),
-          ],
-        ),
+        content: Text('Report ID: $reportId\nCollection was verified successfully.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            onPressed: () {
+              Navigator.pop(context);
+              _resumeScanner();
+            },
+            child: const Text('Scan Again'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('View Details'),
+            child: const Text('Done'),
           ),
         ],
       ),
     );
+  }
+
+  void _showFailure(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Verification Failed'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resumeScanner();
+            },
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resumeScanner() async {
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    await _scannerController.start();
   }
 }

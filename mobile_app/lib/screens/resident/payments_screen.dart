@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
+import '../../services/api_service.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -10,6 +12,13 @@ class PaymentsScreen extends StatefulWidget {
 }
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
+  final _apiService = ApiService();
+  String? _processingReportId;
+  String? _targetReportId;
+  bool _autoPayFromRoute = false;
+  bool _routeInitialized = false;
+  bool _autoPayTriggered = false;
+
   @override
   void initState() {
     super.initState();
@@ -19,6 +28,53 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Future<void> _loadReports() async {
     final reportProvider = Provider.of<ReportProvider>(context, listen: false);
     await reportProvider.fetchMyReports();
+    await _maybeAutoPayForTargetReport();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_routeInitialized) {
+      return;
+    }
+
+    _routeInitialized = true;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    _targetReportId = args?['reportId']?.toString();
+    _autoPayFromRoute = args?['autoPay'] == true;
+
+    if (_autoPayFromRoute) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeAutoPayForTargetReport();
+      });
+    }
+  }
+
+  Future<void> _maybeAutoPayForTargetReport() async {
+    if (!_autoPayFromRoute || _autoPayTriggered || _targetReportId == null || !mounted) {
+      return;
+    }
+
+    final reportProvider = Provider.of<ReportProvider>(context, listen: false);
+
+    final target = reportProvider.reports
+        .where((r) => r.id == _targetReportId)
+        .cast<dynamic>()
+        .toList();
+
+    if (target.isEmpty) {
+      return;
+    }
+
+    final report = target.first;
+    if (report.status != 'pending') {
+      _autoPayTriggered = true;
+      return;
+    }
+
+    _autoPayTriggered = true;
+    await _initiatePayment(report.id);
   }
 
   @override
@@ -120,8 +176,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                           // Report payments list
                           ...reportProvider.reports.map((report) {
                             final isPending = report.status == 'pending';
+                            final isTarget = report.id == _targetReportId;
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
+                              shape: isTarget
+                                  ? RoundedRectangleBorder(
+                                      side: const BorderSide(color: Colors.blue, width: 1.5),
+                                      borderRadius: BorderRadius.circular(12),
+                                    )
+                                  : null,
                               child: Padding(
                                 padding: const EdgeInsets.all(12.0),
                                 child: Row(
@@ -187,7 +250,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                           SizedBox(
                                             height: 32,
                                             child: ElevatedButton(
-                                              onPressed: () => _initiatePayment(report.id),
+                                              onPressed: _processingReportId == report.id
+                                                  ? null
+                                                  : () => _initiatePayment(report.id),
                                               style: ElevatedButton.styleFrom(
                                                 padding: const EdgeInsets.symmetric(
                                                   horizontal: 12,
@@ -195,7 +260,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                                 ),
                                                 textStyle: const TextStyle(fontSize: 12),
                                               ),
-                                              child: const Text('Pay Now'),
+                                              child: _processingReportId == report.id
+                                                  ? const SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: Colors.white,
+                                                      ),
+                                                    )
+                                                  : const Text('Pay Now'),
                                             ),
                                           ),
                                         ],
@@ -225,26 +299,110 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     return total.toStringAsFixed(0);
   }
 
-  void _initiatePayment(String reportId) {
-    showDialog(
+  Future<void> _initiatePayment(String reportId) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final phone = await _promptPhoneNumber(authProvider.user?.phoneNumber);
+
+    if (phone == null || phone.isEmpty || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _processingReportId = reportId;
+    });
+
+    try {
+      final validation = await _apiService.validatePaymentPhone(phone: phone);
+      if (validation['success'] != true || validation['data']?['valid'] != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(validation['data']?['message']?.toString() ?? validation['message']?.toString() ?? 'Invalid phone number'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final formattedPhone = validation['data']?['formattedPhone']?.toString() ?? phone;
+      final response = await _apiService.initiatePayment(
+        orderId: reportId,
+        method: 'marzpay',
+        phone: formattedPhone,
+      );
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        final data = response['data'] as Map<String, dynamic>?;
+        final transactionRef = data?['transactionRef']?.toString() ?? 'N/A';
+        final status = data?['status']?.toString() ?? 'pending';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment initiated. Ref: $transactionRef ($status). Check your phone prompt.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        await _loadReports();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']?.toString() ?? 'Failed to initiate payment'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _processingReportId = null;
+        });
+      }
+    }
+  }
+
+  Future<String?> _promptPhoneNumber(String? initialPhone) async {
+    final controller = TextEditingController(text: initialPhone ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Payment'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.payment, size: 64, color: Colors.orange),
-            SizedBox(height: 16),
-            Text(
-              'Mobile Money Payment',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'You will receive an MTN or Airtel Money prompt on your phone to complete the payment.',
-              textAlign: TextAlign.center,
-            ),
-          ],
+        title: const Text('Mobile Money Payment'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Enter your MTN or Airtel Uganda number to receive payment prompt.'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: '0783xxxxxx or +256783xxxxxx',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Phone number is required';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -253,18 +411,18 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Payment integration coming soon!'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+              Navigator.pop(context, controller.text.trim());
             },
             child: const Text('Continue'),
           ),
         ],
       ),
     );
+
+    controller.dispose();
+    return result;
   }
 }

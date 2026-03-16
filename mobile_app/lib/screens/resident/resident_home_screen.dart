@@ -15,6 +15,12 @@ class ResidentHomeScreen extends StatelessWidget {
         title: const Text('GFC - Home'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {
+              Navigator.pushNamed(context, '/notifications');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.logout();
@@ -115,6 +121,47 @@ class ResidentHomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              break;
+            case 1:
+              Navigator.pushNamed(context, '/my-reports');
+              break;
+            case 2:
+              Navigator.pushNamed(context, '/payments');
+              break;
+            case 3:
+              Navigator.pushNamed(context, '/notifications');
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt_outlined),
+            activeIcon: Icon(Icons.list_alt),
+            label: 'Reports',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.payment_outlined),
+            activeIcon: Icon(Icons.payment),
+            label: 'Payments',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_outlined),
+            activeIcon: Icon(Icons.notifications),
+            label: 'Alerts',
+          ),
+        ],
       ),
     );
   }

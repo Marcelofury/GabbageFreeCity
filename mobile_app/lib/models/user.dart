@@ -3,6 +3,7 @@ library;
 
 class User {
   final String id;
+  final String username;
   final String phoneNumber;
   final String fullName;
   final String userType; // 'resident' or 'collector'
@@ -12,6 +13,7 @@ class User {
 
   User({
     required this.id,
+    required this.username,
     required this.phoneNumber,
     required this.fullName,
     required this.userType,
@@ -23,6 +25,7 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'],
+      username: json['username'] ?? '',
       phoneNumber: json['phone_number'],
       fullName: json['full_name'],
       userType: json['user_type'],
@@ -35,6 +38,7 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'username': username,
       'phone_number': phoneNumber,
       'full_name': fullName,
       'user_type': userType,

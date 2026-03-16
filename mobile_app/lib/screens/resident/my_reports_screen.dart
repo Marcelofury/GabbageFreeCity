@@ -99,6 +99,28 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                               Text('UGX ${report.paymentAmount.toStringAsFixed(0)}'),
                             ],
                           ),
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/report-details',
+                              arguments: {
+                                'reportId': report.id,
+                                'id': report.id,
+                                'status': report.status,
+                                'lastUpdated': report.completedAt ?? report.assignedAt ?? report.reportedAt,
+                                'address': report.addressDescription,
+                                'latitude': report.latitude,
+                                'longitude': report.longitude,
+                                'garbageType': report.garbageType,
+                                'volume': report.estimatedVolume,
+                                'amount': report.paymentAmount.toStringAsFixed(0),
+                                'paymentStatus': report.status == 'pending' ? 'unpaid' : 'paid',
+                                'txRef': 'N/A',
+                                'collectorName': report.assignedCollectorId != null ? 'Assigned Collector' : null,
+                                'eta': report.status == 'assigned' ? '~20 min' : null,
+                              },
+                            );
+                          },
                         ),
                       );
                     },

@@ -17,6 +17,14 @@ class ReportProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  GarbageReport? findReportById(String id) {
+    try {
+      return _reports.firstWhere((report) => report.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Create a new garbage report
   Future<String?> createReport({
     required double latitude,

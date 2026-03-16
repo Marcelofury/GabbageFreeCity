@@ -12,6 +12,8 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -21,6 +23,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
     _phoneController.dispose();
     _nameController.dispose();
     _emailController.dispose();
@@ -46,6 +50,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     final success = await authProvider.register(
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
       phoneNumber: _phoneController.text,
       fullName: _nameController.text,
       userType: _userType,
@@ -96,6 +102,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    hintText: 'e.g., marcelofury',
+                    prefixIcon: Icon(Icons.alternate_email),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a username';
+                    }
+                    if (!RegExp(r'^[a-zA-Z0-9_.-]{3,30}$').hasMatch(value.trim())) {
+                      return '3-30 chars: letters, numbers, _, ., -';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a password';
+                    }
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
                     }
                     return null;
                   },

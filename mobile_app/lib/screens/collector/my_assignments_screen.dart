@@ -1,37 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../providers/collector_provider.dart';
 
-class MyAssignmentsScreen extends StatelessWidget {
+class MyAssignmentsScreen extends StatefulWidget {
   const MyAssignmentsScreen({super.key});
 
   @override
+  State<MyAssignmentsScreen> createState() => _MyAssignmentsScreenState();
+}
+
+class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAssignments(context);
+    });
+  }
+
+  Future<void> _loadAssignments(BuildContext context) async {
+    final provider = Provider.of<CollectorProvider>(context, listen: false);
+    await provider.fetchMyAssignments();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Mock data for demonstration
-    final mockAssignments = [
-      {
-        'id': '1',
-        'address': 'Nakawa Market Area',
-        'volume': 'medium',
-        'status': 'assigned',
-        'amount': 5000,
-        'assignedAt': DateTime.now().subtract(const Duration(hours: 2)),
-      },
-      {
-        'id': '2',
-        'address': 'Ntinda Shopping Center',
-        'volume': 'small',
-        'status': 'in_progress',
-        'amount': 3000,
-        'assignedAt': DateTime.now().subtract(const Duration(days: 1)),
-      },
-    ];
+    final provider = Provider.of<CollectorProvider>(context);
+    final assignments = provider.assignments;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Assignments'),
       ),
-      body: mockAssignments.isEmpty
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : provider.error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text(provider.error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () => _loadAssignments(context),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : assignments.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -51,9 +72,12 @@ class MyAssignmentsScreen extends StatelessWidget {
                 ],
               ),
             )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
+          : RefreshIndicator(
+              onRefresh: () => _loadAssignments(context),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
                 // Summary Card
                 Card(
                   color: Colors.green.shade50,
@@ -78,27 +102,35 @@ class MyAssignmentsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                ...mockAssignments.map((assignment) {
+                ...assignments.map((assignment) {
+                  final status = (assignment['status'] ?? 'assigned').toString();
+                  final address = (assignment['address_description'] ?? assignment['address'] ?? 'Unknown location').toString();
+                  final assignedRaw = assignment['assigned_at'] ?? assignment['assignedAt'];
+                  final assignedAt = assignedRaw is DateTime
+                      ? assignedRaw
+                      : DateTime.tryParse(assignedRaw?.toString() ?? '') ?? DateTime.now();
+                  final amount = assignment['payment_amount'] ?? assignment['amount'] ?? 0;
+                  final volume = (assignment['estimated_volume'] ?? assignment['volume'] ?? '-').toString();
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: Column(
                       children: [
                         ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: _getStatusColor(assignment['status'] as String)
+                            backgroundColor: _getStatusColor(status)
                                 .withOpacity(0.2),
                             child: Icon(
-                              _getStatusIcon(assignment['status'] as String),
-                              color: _getStatusColor(assignment['status'] as String),
+                              _getStatusIcon(status),
+                              color: _getStatusColor(status),
                             ),
                           ),
-                          title: Text(assignment['address'] as String),
+                          title: Text(address),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Volume: ${assignment['volume']}'),
+                              Text('Volume: $volume'),
                               Text(
-                                'Assigned: ${DateFormat.yMMMd().add_jm().format(assignment['assignedAt'] as DateTime)}',
+                                'Assigned: ${DateFormat.yMMMd().add_jm().format(assignedAt)}',
                                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                               ),
                             ],
@@ -108,22 +140,41 @@ class MyAssignmentsScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                'UGX ${assignment['amount']}',
+                                'UGX $amount',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                               Text(
-                                _getStatusText(assignment['status'] as String),
+                                _getStatusText(status),
                                 style: TextStyle(
-                                  color: _getStatusColor(assignment['status'] as String),
+                                  color: _getStatusColor(status),
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/assignment-details',
+                              arguments: {
+                                'assignmentId': assignment['id']?.toString(),
+                                'id': assignment['id'],
+                                'status': status,
+                                'amount': amount,
+                                'address': address,
+                                'landmark': 'Nearby landmark',
+                                'reportedAt': assignedAt,
+                                'volume': volume,
+                                'garbageType': assignment['garbage_type'] ?? 'mixed',
+                                'distanceKm': 2.5,
+                                'etaMinutes': 15,
+                              },
+                            );
+                          },
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -142,11 +193,11 @@ class MyAssignmentsScreen extends StatelessWidget {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    _updateStatus(context, assignment['status'] as String);
+                                    _updateStatus(context, assignment['id'].toString(), status);
                                   },
                                   icon: const Icon(Icons.check, size: 18),
                                   label: Text(
-                                    _getActionText(assignment['status'] as String),
+                                    _getActionText(status),
                                   ),
                                 ),
                               ),
@@ -157,7 +208,8 @@ class MyAssignmentsScreen extends StatelessWidget {
                     ),
                   );
                 }),
-              ],
+                ],
+              ),
             ),
     );
   }
@@ -278,13 +330,20 @@ class MyAssignmentsScreen extends StatelessWidget {
     }
   }
 
-  void _updateStatus(BuildContext context, String currentStatus) {
+  Future<void> _updateStatus(BuildContext context, String reportId, String currentStatus) async {
     final newStatus = currentStatus == 'assigned' ? 'in_progress' : 'completed';
+    final provider = Provider.of<CollectorProvider>(context, listen: false);
+    final ok = await provider.updateAssignmentStatus(reportId: reportId, status: newStatus);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Status update to "$newStatus" - API integration pending'),
-        backgroundColor: Colors.orange,
+        content: Text(ok ? 'Status updated to "$newStatus"' : (provider.error ?? 'Failed to update status')),
+        backgroundColor: ok ? Colors.green : Colors.red,
       ),
     );
+
+    if (ok) {
+      await provider.fetchMyAssignments();
+    }
   }
 }

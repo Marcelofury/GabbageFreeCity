@@ -25,6 +25,8 @@ class ApiService {
 
   /// Register new user
   Future<Map<String, dynamic>> register({
+    required String username,
+    required String password,
     required String phoneNumber,
     required String fullName,
     required String userType,
@@ -40,6 +42,8 @@ class ApiService {
         Uri.parse('$BASE_URL/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'username': username,
+          'password': password,
           'phone_number': phoneNumber,
           'full_name': fullName,
           'user_type': userType,
@@ -76,11 +80,36 @@ class ApiService {
   }
 
   /// Login user
-  Future<Map<String, dynamic>> login(String phoneNumber) async {
+  Future<Map<String, dynamic>> login({
+    required String username,
+    required String password,
+  }) async {
     final response = await http.post(
       Uri.parse('$BASE_URL/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone_number': phoneNumber}),
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+      }),
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  /// Set or reset password for existing account
+  Future<Map<String, dynamic>> setPassword({
+    required String username,
+    required String phoneNumber,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$BASE_URL/auth/set-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'phone_number': phoneNumber,
+        'new_password': newPassword,
+      }),
     );
 
     return jsonDecode(response.body);
@@ -153,9 +182,9 @@ class ApiService {
 
   /// Initiate payment
   Future<Map<String, dynamic>> initiatePayment({
-    required String reportId,
-    required String phoneNumber,
-    required double amount,
+    required String orderId,
+    required String phone,
+    String method = 'marzpay',
   }) async {
     final headers = await _getHeaders();
     
@@ -163,9 +192,26 @@ class ApiService {
       Uri.parse('$BASE_URL/payments/initiate'),
       headers: headers,
       body: jsonEncode({
-        'report_id': reportId,
-        'phone_number': phoneNumber,
-        'amount': amount,
+        'orderId': orderId,
+        'method': method,
+        'phone': phone,
+      }),
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  /// Validate Uganda mobile money phone for MarzPay
+  Future<Map<String, dynamic>> validatePaymentPhone({
+    required String phone,
+  }) async {
+    final headers = await _getHeaders();
+
+    final response = await http.post(
+      Uri.parse('$BASE_URL/payments/validate-phone'),
+      headers: headers,
+      body: jsonEncode({
+        'phone': phone,
       }),
     );
 
@@ -178,14 +224,96 @@ class ApiService {
     required double longitude,
     int radius = 5000,
   }) async {
-    final headers = await _getHeaders();
-    
-    final response = await http.get(
-      Uri.parse('$BASE_URL/garbage-reports/nearby?latitude=$latitude&longitude=$longitude&radius=$radius'),
-      headers: headers,
-    );
+    try {
+      final headers = await _getHeaders();
 
-    return jsonDecode(response.body);
+      final response = await http.get(
+        Uri.parse('$BASE_URL/garbage-reports/nearby?latitude=$latitude&longitude=$longitude&radius=$radius'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+
+      return {
+        'success': false,
+        'message': 'Failed to fetch nearby reports: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Assign collector to a report
+  Future<Map<String, dynamic>> assignReport(String reportId) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/garbage-reports/$reportId/assign'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Update report status
+  Future<Map<String, dynamic>> updateReportStatus({
+    required String reportId,
+    required String status,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/garbage-reports/$reportId/status'),
+        headers: headers,
+        body: jsonEncode({'status': status}),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get collector assignments
+  Future<Map<String, dynamic>> getMyAssignments() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$BASE_URL/collectors/my-assignments'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+
+      return {
+        'success': false,
+        'message': 'Failed to fetch assignments: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
   }
 
   /// Update collector location
@@ -205,5 +333,92 @@ class ApiService {
     );
 
     return jsonDecode(response.body);
+  }
+
+  /// Verify collection from collector QR scan
+  Future<Map<String, dynamic>> verifyCollection({
+    required String reportId,
+    required double latitude,
+    required double longitude,
+    required String qrCodeData,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$BASE_URL/collectors/verify-collection'),
+        headers: headers,
+        body: jsonEncode({
+          'report_id': reportId,
+          'latitude': latitude,
+          'longitude': longitude,
+          'qr_code_data': qrCodeData,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get notifications for authenticated user
+  Future<Map<String, dynamic>> getNotifications({int limit = 50, int offset = 0}) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$BASE_URL/notifications?limit=$limit&offset=$offset'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Mark one notification as read
+  Future<Map<String, dynamic>> markNotificationAsRead(String id) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/notifications/$id/read'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Mark all notifications as read
+  Future<Map<String, dynamic>> markAllNotificationsAsRead() async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/notifications/read-all'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
   }
 }

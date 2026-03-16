@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../providers/collector_provider.dart';
 import '../../providers/location_provider.dart';
 
 class NearbyReportsScreen extends StatefulWidget {
@@ -15,34 +16,6 @@ class NearbyReportsScreen extends StatefulWidget {
 class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
   final MapController _mapController = MapController();
   bool _isLoading = false;
-  
-  // Mock nearby reports (in real app, fetch from API)
-  final List<Map<String, dynamic>> _nearbyReports = [
-    {
-      'id': '1',
-      'address': 'Nakawa Market',
-      'latitude': 0.3476,
-      'longitude': 32.6169,
-      'volume': 'medium',
-      'amount': 5000,
-    },
-    {
-      'id': '2',
-      'address': 'Ntinda Shopping Complex',
-      'latitude': 0.3583,
-      'longitude': 32.6294,
-      'volume': 'large',
-      'amount': 10000,
-    },
-    {
-      'id': '3',
-      'address': 'Bukoto Street',
-      'latitude': 0.3550,
-      'longitude': 32.6050,
-      'volume': 'small',
-      'amount': 3000,
-    },
-  ];
 
   @override
   void initState() {
@@ -52,25 +25,28 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
 
   Future<void> _loadNearbyReports() async {
     setState(() => _isLoading = true);
-    
+
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    
+    final collectorProvider = Provider.of<CollectorProvider>(context, listen: false);
+
     // Get current location first
     if (locationProvider.currentPosition == null) {
       await locationProvider.getCurrentLocation();
     }
-    
-    // In real app: call API here
-    // await apiService.getNearbyReports(lat, lng, radius: 5000);
-    
-    await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-    
+
+    if (locationProvider.currentPosition != null) {
+      await collectorProvider.fetchNearbyReports(
+        latitude: locationProvider.currentPosition!.latitude,
+        longitude: locationProvider.currentPosition!.longitude,
+      );
+    }
+
     if (mounted) {
       setState(() => _isLoading = false);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Found ${_nearbyReports.length} nearby reports'),
+          content: Text('Found ${collectorProvider.nearbyReports.length} nearby reports'),
           backgroundColor: Colors.green,
         ),
       );
@@ -80,6 +56,9 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
+    final collectorProvider = Provider.of<CollectorProvider>(context);
+    final nearbyReports = collectorProvider.nearbyReports;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nearby Reports'),
@@ -94,15 +73,13 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    _isLoading 
-                        ? 'Loading reports...' 
-                        : 'Showing ${_nearbyReports.length} nearby reports',
+                    _isLoading ? 'Loading reports...' : 'Showing ${nearbyReports.length} nearby reports',
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                 ),
                 IconButton(
                   onPressed: _isLoading ? null : _loadNearbyReports,
-                  icon: _isLoading 
+                  icon: _isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,
@@ -156,9 +133,11 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   ),
                 // Show nearby reports
                 MarkerLayer(
-                  markers: _nearbyReports.map((report) {
+                  markers: nearbyReports.map((report) {
+                    final lat = (report['latitude'] ?? 0.3476).toDouble();
+                    final lng = (report['longitude'] ?? 32.6169).toDouble();
                     return Marker(
-                      point: LatLng(report['latitude'], report['longitude']),
+                      point: LatLng(lat, lng),
                       width: 80,
                       height: 80,
                       child: GestureDetector(
@@ -185,7 +164,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                report['volume'],
+                                (report['estimated_volume'] ?? report['volume'] ?? 'unknown').toString(),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -234,7 +213,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        report['address'],
+                        (report['address_description'] ?? report['address'] ?? 'Unknown address').toString(),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -243,7 +222,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Volume: ${report['volume']}',
+                        'Volume: ${report['estimated_volume'] ?? report['volume'] ?? '-'}',
                         style: TextStyle(color: Colors.grey[600]),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -265,7 +244,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'UGX ${report['amount']}',
+                        'UGX ${report['payment_amount'] ?? report['amount'] ?? 0}',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -296,13 +275,47 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
               ],
             ),
             const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(
+                    context,
+                    '/report-details',
+                    arguments: {
+                      'reportId': report['id']?.toString(),
+                      'id': report['id'],
+                      'status': 'assigned',
+                      'lastUpdated': DateTime.now(),
+                      'address': report['address_description'] ?? report['address'],
+                      'latitude': report['latitude'] ?? 0.3476,
+                      'longitude': report['longitude'] ?? 32.6169,
+                      'garbageType': 'mixed',
+                      'volume': report['estimated_volume'] ?? report['volume'] ?? 'medium',
+                      'amount': report['payment_amount'] ?? report['amount'] ?? 0,
+                      'paymentStatus': 'paid',
+                      'txRef': 'AUTO',
+                      'collectorName': 'Unassigned',
+                      'eta': '~15 min',
+                    },
+                  );
+                },
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: const Text('View Details'),
+              ),
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      _openMaps(report['latitude'], report['longitude']);
+                      _openMaps(
+                        (report['latitude'] ?? 0.3476).toDouble(),
+                        (report['longitude'] ?? 32.6169).toDouble(),
+                      );
                     },
                     icon: const Icon(Icons.directions, size: 18),
                     label: const Text(
@@ -374,22 +387,34 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Accept Assignment'),
-        content: Text('Accept garbage collection at ${report['address']}?'),
+        content: Text(
+          'Accept garbage collection at ${report['address_description'] ?? report['address'] ?? 'this location'}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // In real app: call API to accept assignment
+              final collectorProvider = Provider.of<CollectorProvider>(context, listen: false);
+              final success = await collectorProvider.acceptAssignment(report['id'].toString());
+
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Assignment accepted! Check My Assignments.'),
-                  backgroundColor: Colors.green,
+                SnackBar(
+                  content: Text(
+                    success
+                        ? 'Assignment accepted! Check My Assignments.'
+                        : (collectorProvider.error ?? 'Failed to accept assignment'),
+                  ),
+                  backgroundColor: success ? Colors.green : Colors.red,
                 ),
               );
+
+              if (success) {
+                _loadNearbyReports();
+              }
             },
             child: const Text('Accept'),
           ),

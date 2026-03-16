@@ -11,11 +11,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _phoneController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -23,7 +25,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.login(_phoneController.text);
+    final success = await authProvider.login(
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+    );
 
     if (!mounted) return;
 
@@ -80,19 +85,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 48),
                 TextFormField(
-                  controller: _phoneController,
+                  controller: _usernameController,
                   decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: '+256700123456',
-                    prefixIcon: Icon(Icons.phone),
+                    labelText: 'Username',
+                    hintText: 'Enter your username',
+                    prefixIcon: Icon(Icons.alternate_email),
                   ),
-                  keyboardType: TextInputType.phone,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your username';
+                    }
+                    if (value.trim().length < 3) {
+                      return 'Username must be at least 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
+                      return 'Please enter your password';
                     }
-                    if (!RegExp(r'^\+256[0-9]{9}$').hasMatch(value)) {
-                      return 'Format: +256XXXXXXXXX';
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters';
                     }
                     return null;
                   },
@@ -117,6 +139,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     Navigator.pushNamed(context, '/register');
                   },
                   child: const Text('Don\'t have an account? Register'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/set-password');
+                  },
+                  child: const Text('Need to set/reset password?'),
                 ),
               ],
             ),

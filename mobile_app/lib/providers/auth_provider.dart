@@ -52,6 +52,8 @@ class AuthProvider with ChangeNotifier {
 
   /// Register a new user
   Future<bool> register({
+    required String username,
+    required String password,
     required String phoneNumber,
     required String fullName,
     required String userType,
@@ -67,6 +69,8 @@ class AuthProvider with ChangeNotifier {
     try {
       debugPrint('Attempting to register with: $phoneNumber');
       final response = await _apiService.register(
+        username: username,
+        password: password,
         phoneNumber: phoneNumber,
         fullName: fullName,
         userType: userType,
@@ -105,13 +109,19 @@ class AuthProvider with ChangeNotifier {
   }
 
   /// Login user
-  Future<bool> login(String phoneNumber) async {
+  Future<bool> login({
+    required String username,
+    required String password,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _apiService.login(phoneNumber);
+      final response = await _apiService.login(
+        username: username,
+        password: password,
+      );
 
       if (response['success']) {
         _user = User.fromJson(response['data']['user']);
@@ -129,6 +139,39 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> setPassword({
+    required String username,
+    required String phoneNumber,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.setPassword(
+        username: username,
+        phoneNumber: phoneNumber,
+        newPassword: newPassword,
+      );
+
+      _isLoading = false;
+      if (response['success'] == true) {
+        notifyListeners();
+        return true;
+      }
+
+      _error = response['message']?.toString() ?? 'Failed to set password';
+      notifyListeners();
+      return false;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;

@@ -9,18 +9,25 @@ import 'dart:async';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
+import 'screens/auth/set_password_screen.dart';
 import 'screens/resident/resident_home_screen.dart';
 import 'screens/resident/report_garbage_screen.dart';
 import 'screens/resident/my_reports_screen.dart';
 import 'screens/resident/payments_screen.dart';
+import 'screens/resident/report_details_screen.dart';
 import 'screens/common/about_screen.dart';
+import 'screens/common/notifications_screen.dart';
 import 'screens/collector/collector_home_screen.dart';
 import 'screens/collector/nearby_reports_screen.dart';
 import 'screens/collector/my_assignments_screen.dart';
 import 'screens/collector/qr_scanner_screen.dart';
 import 'screens/collector/history_screen.dart';
+import 'screens/collector/assignment_details_screen.dart';
+import 'screens/collector/collector_profile_screen.dart';
 import 'providers/auth_provider.dart';
+import 'providers/collector_provider.dart';
 import 'providers/location_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/report_provider.dart';
 
 void main() {
@@ -41,7 +48,9 @@ class GarbageFreeCityApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => CollectorProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
       ],
       child: MaterialApp(
@@ -96,16 +105,21 @@ class GarbageFreeCityApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
+          '/set-password': (context) => const SetPasswordScreen(),
           '/resident-home': (context) => const ResidentHomeScreen(),
           '/report-garbage': (context) => const ReportGarbageScreen(),
           '/my-reports': (context) => const MyReportsScreen(),
           '/payments': (context) => const PaymentsScreen(),
+          '/report-details': (context) => const ReportDetailsScreen(),
           '/about': (context) => const AboutScreen(),
+          '/notifications': (context) => const NotificationsScreen(),
           '/collector-home': (context) => const CollectorHomeScreen(),
           '/nearby-reports': (context) => const NearbyReportsScreen(),
           '/my-assignments': (context) => const MyAssignmentsScreen(),
+          '/assignment-details': (context) => const AssignmentDetailsScreen(),
           '/qr-scanner': (context) => const QRScannerScreen(),
           '/history': (context) => const HistoryScreen(),
+          '/collector-profile': (context) => const CollectorProfileScreen(),
         },
       ),
     );
