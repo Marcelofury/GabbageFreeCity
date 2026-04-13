@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/garbage_report.dart';
 import '../../providers/report_provider.dart';
 
@@ -107,9 +108,16 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Map integration pending')),
-                  );
+                  final lat = _asDouble(report['latitude']);
+                  final lng = _asDouble(report['longitude']);
+                  if (lat == null || lng == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Report location unavailable')),
+                    );
+                    return;
+                  }
+
+                  _openInMap(lat, lng);
                 },
                 icon: const Icon(Icons.map),
                 label: const Text('Open in Map'),
@@ -119,7 +127,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           const SizedBox(height: 12),
           _section('Garbage Details', Icons.delete_outline, [
             _row('Type', report['garbageType']?.toString() ?? '-'),
-            _row('Volume', report['volume']?.toString() ?? '-'),
+            _row('Sacks', report['sackCount']?.toString() ?? '-'),
+            _row('Volume Label', report['volume']?.toString() ?? '-'),
             const SizedBox(height: 8),
             Container(
               height: 120,
@@ -163,9 +172,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Receipt export pending')),
-                  );
+                  _showReceiptDialog(report);
                 },
                 child: const Text('Receipt'),
               ),
@@ -298,6 +305,60 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     return value?.toString() ?? '-';
   }
 
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  Future<void> _openInMap(double lat, double lng) async {
+    final uri = Uri.parse('https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=18/$lat/$lng');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Map unavailable. Coordinates: $lat, $lng')),
+      );
+    }
+  }
+
+  void _showReceiptDialog(Map<String, dynamic> report) {
+    final status = (report['paymentStatus'] ?? 'unpaid').toString();
+    if (status != 'paid') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Receipt is available after successful payment')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Receipt'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _row('Receipt #', 'GFC-${report['id'] ?? '-'}'),
+            _row('Amount', 'UGX ${report['amount'] ?? '-'}'),
+            _row('Sacks', '${report['sackCount'] ?? '-'}'),
+            _row('Transaction Ref', report['txRef']?.toString() ?? 'N/A'),
+            _row('Address', report['address']?.toString() ?? '-'),
+            _row('Date', _formatDateTime(report['lastUpdated'])),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Map<String, dynamic>? _composeReportMap(GarbageReport? report, Map<String, dynamic>? args) {
     if (report == null) {
       return args;
@@ -312,9 +373,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       'longitude': report.longitude,
       'garbageType': report.garbageType,
       'volume': report.estimatedVolume,
+      'sackCount': report.sackCount,
       'amount': report.paymentAmount.toStringAsFixed(0),
-      'paymentStatus': report.status == 'pending' ? 'unpaid' : 'paid',
-      'txRef': 'N/A',
+      'paymentStatus': report.paymentStatus == 'successful' ? 'paid' : 'unpaid',
+      'txRef': report.transactionRef ?? 'N/A',
       'collectorName': report.assignedCollectorId != null ? 'Assigned Collector' : null,
       'eta': report.status == 'assigned' ? '~20 min' : null,
     };
