@@ -377,7 +377,11 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Future<void> _initiatePayment(String reportId) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final phone = await _promptPhoneNumber(authProvider.user?.phoneNumber);
+    String? phone = authProvider.user?.phoneNumber;
+
+    if (phone == null || phone.trim().isEmpty) {
+      phone = await _promptPhoneNumber(authProvider.user?.phoneNumber);
+    }
 
     if (phone == null || phone.isEmpty || !mounted) {
       return;
