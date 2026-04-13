@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../services/api_service.dart';
@@ -18,6 +19,81 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   bool _autoPayFromRoute = false;
   bool _routeInitialized = false;
   bool _autoPayTriggered = false;
+
+  String? _getUssdCodeForProvider(String? provider) {
+    final normalized = provider?.toUpperCase();
+    if (normalized == 'MTN') return '*165#';
+    if (normalized == 'AIRTEL') return '*185#';
+    return null;
+  }
+
+  Future<void> _launchUssdCode(String code) async {
+    final encoded = code.replaceAll('#', '%23');
+    final uri = Uri.parse('tel:$encoded');
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not open dialer on this device'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  Future<void> _showPaymentInstructionDialog({
+    required String transactionRef,
+    required String provider,
+  }) async {
+    final ussdCode = _getUssdCodeForProvider(provider);
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Mobile Money Payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Reference: $transactionRef'),
+            const SizedBox(height: 8),
+            Text('Provider: $provider'),
+            const SizedBox(height: 12),
+            const Text(
+              'If popup does not appear, use manual USSD to approve payment and then return to refresh.',
+            ),
+            if (ussdCode != null) ...[
+              const SizedBox(height: 10),
+              Text('Manual USSD: $ussdCode'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _loadReports();
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('I Have Approved, Refresh'),
+          ),
+          if (ussdCode != null)
+            ElevatedButton(
+              onPressed: () async {
+                await _launchUssdCode(ussdCode);
+              },
+              child: Text('Dial $ussdCode'),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -325,6 +401,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       }
 
       final formattedPhone = validation['data']?['formattedPhone']?.toString() ?? phone;
+      final provider = validation['data']?['provider']?.toString() ?? 'UNKNOWN';
       final response = await _apiService.initiatePayment(
         orderId: reportId,
         method: 'marzpay',
@@ -340,9 +417,14 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment initiated. Ref: $transactionRef ($status). Check your phone prompt.'),
+            content: Text('Payment initiated. Ref: $transactionRef ($status).'),
             backgroundColor: Colors.green,
           ),
+        );
+
+        await _showPaymentInstructionDialog(
+          transactionRef: transactionRef,
+          provider: provider,
         );
 
         await _loadReports();
