@@ -45,7 +45,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<CollectorProvider>(context);
     final history = provider.collectionHistory;
-    final totalEarnings = history.fold<int>(
+    final totalManagedValue = history.fold<int>(
       0,
       (sum, item) => sum + _asInt(item['payment_amount']),
     );
@@ -112,9 +112,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                           Expanded(
                             child: _buildStatColumn(
-                              'Earnings',
-                              'UGX $totalEarnings',
-                              Icons.monetization_on,
+                              'Managed Value',
+                              'UGX $totalManagedValue',
+                              Icons.account_balance_wallet,
                             ),
                           ),
                           Container(

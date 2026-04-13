@@ -351,7 +351,7 @@ router.get('/profile', authenticateToken, requireUserType('collector'), async (r
             throw assignedError || inProgressError || completedError || completedRowsError;
         }
 
-        const totalEarnings = (completedRows || []).reduce((sum, row) => {
+        const managedValue = (completedRows || []).reduce((sum, row) => {
             const amount = Number(row.payment_amount || 0);
             return sum + (Number.isFinite(amount) ? amount : 0);
         }, 0);
@@ -372,7 +372,7 @@ router.get('/profile', authenticateToken, requireUserType('collector'), async (r
                     assigned_count: assignedCount || 0,
                     in_progress_count: inProgressCount || 0,
                     completed_count: completedCount || 0,
-                    total_earnings: totalEarnings,
+                    managed_value_ugx: managedValue,
                 },
             },
         });

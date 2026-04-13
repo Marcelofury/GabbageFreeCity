@@ -23,7 +23,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
     'assigned_count': 0,
     'in_progress_count': 0,
     'completed_count': 0,
-    'total_earnings': 0,
+    'managed_value_ugx': 0,
   };
 
   @override
@@ -61,7 +61,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
           'assigned_count': stats['assigned_count'] ?? 0,
           'in_progress_count': stats['in_progress_count'] ?? 0,
           'completed_count': stats['completed_count'] ?? 0,
-          'total_earnings': stats['total_earnings'] ?? 0,
+          'managed_value_ugx': stats['managed_value_ugx'] ?? 0,
         };
         _isLoading = false;
       });
@@ -185,8 +185,8 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.payments_outlined),
-              title: const Text('Total Earnings'),
-              subtitle: Text('UGX ${_stats['total_earnings'] ?? 0}'),
+              title: const Text('Payments Managed (Central Wallet)'),
+              subtitle: Text('UGX ${_stats['managed_value_ugx'] ?? 0}'),
             ),
           ),
           const SizedBox(height: 12),
