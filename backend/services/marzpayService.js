@@ -186,10 +186,21 @@ async function checkTransactionStatus(uuid) {
 }
 
 async function getWalletBalance() {
-    return request({
-        method: 'get',
-        url: '/wallet/balance',
-    });
+    try {
+        return await request({
+            method: 'get',
+            url: '/wallet/balance',
+        });
+    } catch (error) {
+        if (error?.statusCode !== 404) {
+            throw error;
+        }
+
+        return request({
+            method: 'get',
+            url: '/wallet',
+        });
+    }
 }
 
 async function getTransactionHistory(params = {}) {

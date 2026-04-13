@@ -80,6 +80,125 @@ function extractCallbackFields(payload) {
     return { transactionRef, providerRef, providerStatus };
 }
 
+function isMissingSchemaObject(error, objectName) {
+    const text = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+    return text.includes(String(objectName || '').toLowerCase()) &&
+        (text.includes('could not find') || text.includes('does not exist'));
+}
+
+async function insertPaymentWithSchemaFallback(paymentPayload) {
+    let { error } = await supabase
+        .from('payments')
+        .insert([paymentPayload]);
+
+    if (!error) {
+        return;
+    }
+
+    if (!isMissingSchemaObject(error, 'provider_reference')) {
+        throw error;
+    }
+
+    const fallbackPayload = { ...paymentPayload };
+    delete fallbackPayload.provider_reference;
+
+    const fallbackResult = await supabase
+        .from('payments')
+        .insert([fallbackPayload]);
+
+    if (fallbackResult.error) {
+        throw fallbackResult.error;
+    }
+}
+
+async function applyMarzpayCallbackFallback({ transactionRef, providerRef, providerStatus, payload }) {
+    const { data: payment, error: paymentLookupError } = await supabase
+        .from('payments')
+        .select('id, report_id, resident_id, amount, payment_status')
+        .or(`transaction_ref.eq.${transactionRef},flw_ref.eq.${transactionRef}`)
+        .limit(1)
+        .maybeSingle();
+
+    if (paymentLookupError) {
+        throw paymentLookupError;
+    }
+
+    if (!payment) {
+        return null;
+    }
+
+    const mappedStatus = mapMarzPayStatus(providerStatus);
+    const newPaymentStatus = toPaymentStatus(mappedStatus);
+
+    const updatePayload = {
+        transaction_id: providerRef || payment.transaction_id || transactionRef,
+        payment_status: newPaymentStatus,
+        webhook_response: payload || {},
+        completed_at: newPaymentStatus === 'successful' ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+    };
+
+    if (providerRef) {
+        updatePayload.provider_reference = providerRef;
+    }
+
+    let paymentUpdateResult = await supabase
+        .from('payments')
+        .update(updatePayload)
+        .eq('id', payment.id)
+        .select('payment_status')
+        .single();
+
+    if (paymentUpdateResult.error && isMissingSchemaObject(paymentUpdateResult.error, 'provider_reference')) {
+        const noProviderRefPayload = { ...updatePayload };
+        delete noProviderRefPayload.provider_reference;
+
+        paymentUpdateResult = await supabase
+            .from('payments')
+            .update(noProviderRefPayload)
+            .eq('id', payment.id)
+            .select('payment_status')
+            .single();
+    }
+
+    if (paymentUpdateResult.error) {
+        throw paymentUpdateResult.error;
+    }
+
+    const { data: currentReport, error: reportLookupError } = await supabase
+        .from('garbage_reports')
+        .select('payment_status')
+        .eq('id', payment.report_id)
+        .single();
+
+    if (reportLookupError) {
+        throw reportLookupError;
+    }
+
+    const newOrderStatus = mappedStatus;
+
+    const { error: reportUpdateError } = await supabase
+        .from('garbage_reports')
+        .update({
+            payment_status: newOrderStatus,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', payment.report_id);
+
+    if (reportUpdateError) {
+        throw reportUpdateError;
+    }
+
+    return {
+        payment_id: payment.id,
+        report_id: payment.report_id,
+        previous_payment_status: payment.payment_status,
+        new_payment_status: newPaymentStatus,
+        previous_order_status: currentReport.payment_status || 'pending',
+        new_order_status: newOrderStatus,
+    };
+}
+
 async function initiatePayment(req, res, next) {
     try {
         const { error, value } = initiatePaymentSchema.validate(req.body);
@@ -140,7 +259,8 @@ async function initiatePayment(req, res, next) {
         }
 
         const transactionRef = randomUUID();
-        const callbackBase = process.env.APP_BASE_URL || process.env.API_BASE_URL;
+        const inferredBaseUrl = `${req.protocol}://${req.get('host')}`;
+        const callbackBase = process.env.APP_BASE_URL || process.env.API_BASE_URL || inferredBaseUrl;
         const callbackUrl =
             process.env.MARZPAY_CALLBACK_URL ||
             (callbackBase ? `${callbackBase}/api/payments/marzpay/callback` : undefined);
@@ -171,29 +291,21 @@ async function initiatePayment(req, res, next) {
         const orderPaymentStatus = mapMarzPayStatus(providerStatus);
         const paymentStatus = toPaymentStatus(orderPaymentStatus);
 
-        const { error: paymentError } = await supabase
-            .from('payments')
-            .insert([
-                {
-                    report_id: value.orderId,
-                    resident_id: req.user.id,
-                    amount,
-                    currency: 'UGX',
-                    payment_method: 'marzpay',
-                    phone_number: formattedPhone,
-                    payment_status: paymentStatus,
-                    initiated_at: new Date().toISOString(),
-                    transaction_ref: transactionRef,
-                    provider_reference: providerRef,
-                    flw_ref: transactionRef,
-                    transaction_id: providerRef,
-                    webhook_response: marzResponse,
-                },
-            ]);
-
-        if (paymentError) {
-            throw paymentError;
-        }
+        await insertPaymentWithSchemaFallback({
+            report_id: value.orderId,
+            resident_id: req.user.id,
+            amount,
+            currency: 'UGX',
+            payment_method: 'marzpay',
+            phone_number: formattedPhone,
+            payment_status: paymentStatus,
+            initiated_at: new Date().toISOString(),
+            transaction_ref: transactionRef,
+            provider_reference: providerRef,
+            flw_ref: transactionRef,
+            transaction_id: providerRef,
+            webhook_response: marzResponse,
+        });
 
         const { error: orderUpdateError } = await supabase
             .from('garbage_reports')
@@ -245,27 +357,41 @@ async function handleMarzpayCallback(req, res, next) {
             return res.status(400).json({ success: false, message: 'transactionRef/reference is required' });
         }
 
+        let transition = null;
         const mappedStatus = mapMarzPayStatus(providerStatus);
 
-        const { data, error } = await supabase.rpc('apply_marzpay_callback', {
+        const rpcResult = await supabase.rpc('apply_marzpay_callback', {
             p_transaction_ref: transactionRef,
             p_provider_reference: providerRef,
             p_provider_status: mappedStatus,
             p_payload: req.body || {},
         });
 
-        if (error) {
-            throw error;
+        if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
+            transition = rpcResult.data[0];
+        } else {
+            const canFallback = isMissingSchemaObject(rpcResult.error, 'apply_marzpay_callback') ||
+                isMissingSchemaObject(rpcResult.error, 'provider_reference');
+
+            if (!canFallback && rpcResult.error) {
+                throw rpcResult.error;
+            }
+
+            transition = await applyMarzpayCallbackFallback({
+                transactionRef,
+                providerRef,
+                providerStatus: mappedStatus,
+                payload: req.body || {},
+            });
         }
 
-        if (!data || data.length === 0) {
+        if (!transition) {
             return res.status(404).json({
                 success: false,
                 message: 'Payment transaction not found',
             });
         }
 
-        const transition = data[0];
         console.log('MarzPay callback transition:', {
             transactionRef,
             providerRef,
