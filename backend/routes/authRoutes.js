@@ -39,6 +39,76 @@ const setPasswordSchema = Joi.object({
     new_password: Joi.string().min(8).max(128).required(),
 });
 
+function getAdminConfig() {
+    const username = String(process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
+    const password = String(process.env.ADMIN_PASSWORD || 'Admin@12345');
+    const fullName = String(process.env.ADMIN_FULL_NAME || 'GFC Administrator').trim();
+    const phoneNumber = String(process.env.ADMIN_PHONE_NUMBER || '+256700000000').trim();
+
+    return {
+        username,
+        password,
+        fullName,
+        phoneNumber,
+    };
+}
+
+async function getOrCreateAdminUser(config) {
+    const { data: existingAdmin, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', config.username)
+        .single();
+
+    if (existingAdmin) {
+        if (existingAdmin.user_type !== 'admin' || existingAdmin.is_admin !== true || !existingAdmin.is_active) {
+            const { data: updatedAdmin, error: updateError } = await supabase
+                .from('users')
+                .update({
+                    user_type: 'admin',
+                    is_admin: true,
+                    is_active: true,
+                    full_name: existingAdmin.full_name || config.fullName,
+                    phone_number: existingAdmin.phone_number || config.phoneNumber,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', existingAdmin.id)
+                .select('*')
+                .single();
+
+            if (updateError) throw updateError;
+            return updatedAdmin;
+        }
+
+        return existingAdmin;
+    }
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+    }
+
+    const passwordHash = await bcrypt.hash(config.password, 10);
+    const { data: newAdmin, error: insertError } = await supabase
+        .from('users')
+        .insert([
+            {
+                username: config.username,
+                password_hash: passwordHash,
+                phone_number: config.phoneNumber,
+                full_name: config.fullName,
+                user_type: 'admin',
+                is_admin: true,
+                is_active: true,
+                area: 'KCCA HQ',
+            },
+        ])
+        .select('*')
+        .single();
+
+    if (insertError) throw insertError;
+    return newAdmin;
+}
+
 /**
  * POST /api/auth/register
  * Register a new user (resident or collector)
@@ -173,6 +243,33 @@ router.post('/login', async (req, res, next) => {
         const { username, password } = value;
         const normalizedUsername = username.toLowerCase();
 
+        const adminConfig = getAdminConfig();
+        if (normalizedUsername === adminConfig.username && password === adminConfig.password) {
+            const adminUser = await getOrCreateAdminUser(adminConfig);
+
+            const token = jwt.sign(
+                { userId: adminUser.id, userType: 'admin' },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            );
+
+            return res.json({
+                success: true,
+                message: 'Admin login successful',
+                data: {
+                    user: {
+                        id: adminUser.id,
+                        username: adminUser.username,
+                        phone_number: adminUser.phone_number,
+                        full_name: adminUser.full_name,
+                        user_type: 'admin',
+                        area: adminUser.area,
+                    },
+                    token,
+                },
+            });
+        }
+
         // Find user
         const { data: user, error: fetchError } = await supabase
             .from('users')
@@ -295,6 +392,11 @@ router.post('/set-password', async (req, res, next) => {
             message: 'Your password was set successfully.',
             type: 'system',
         });
+
+        await sendSMS(
+            user.phone_number,
+            'Your GFC account password was updated successfully. If this was not you, contact KCCA support immediately.'
+        );
 
         return res.json({
             success: true,

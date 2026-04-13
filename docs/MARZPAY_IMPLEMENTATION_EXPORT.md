@@ -107,3 +107,5 @@ For another system, copy these blocks in order:
 - MarzPay wallet endpoints may require backend server IP whitelisting.
 - Phone normalization must enforce `+256XXXXXXXXX` before API calls.
 - Keep callback idempotent; current solution uses SQL transition function to avoid inconsistent state updates.
+- Current report pricing logic uses sack-based amount calculation (default `SACK_PRICE_UGX=20`).
+- For low-value testing with this pricing model, ensure `MARZPAY_MIN_AMOUNT` is set to `20` (or lower) in backend env.
