@@ -17,7 +17,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   final _descriptionController = TextEditingController();
   int _sackCount = 1;
 
-  int get _calculatedAmount => _sackCount * 2000;
+  int get _calculatedAmount => _sackCount * 20;
 
   @override
   void initState() {
@@ -241,7 +241,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   SizedBox(height: 4),
-                                  Text('UGX 2,000 per sack'),
+                                  Text('UGX 20 per sack'),
                                 ],
                               ),
                             ),
