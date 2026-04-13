@@ -47,6 +47,47 @@ function toPaymentStatus(orderPaymentStatus) {
     return 'pending';
 }
 
+function extractLookupPayload(payload) {
+    const root = payload || {};
+    const data = root.data || {};
+    const transaction = data.transaction || root.transaction || {};
+
+    const status =
+        transaction.status ||
+        data.status ||
+        root.status ||
+        root.transactionStatus ||
+        root.transaction_status ||
+        'pending';
+
+    const providerRef =
+        transaction.provider_reference ||
+        data.provider_reference ||
+        root.provider_reference ||
+        transaction.providerRef ||
+        data.providerRef ||
+        root.providerRef ||
+        transaction.providerReference ||
+        data.providerReference ||
+        root.providerReference ||
+        null;
+
+    const transactionRef =
+        transaction.reference ||
+        data.reference ||
+        root.reference ||
+        root.transactionRef ||
+        root.transaction_ref ||
+        null;
+
+    return {
+        status,
+        providerRef,
+        transactionRef,
+        raw: root,
+    };
+}
+
 function extractCallbackFields(payload) {
     const root = payload || {};
     const data = root.data || {};
@@ -197,6 +238,38 @@ async function applyMarzpayCallbackFallback({ transactionRef, providerRef, provi
         previous_order_status: currentReport.payment_status || 'pending',
         new_order_status: newOrderStatus,
     };
+}
+
+async function applyMarzpayTransition({ transactionRef, providerRef, providerStatus, payload }) {
+    let transition = null;
+    const mappedStatus = mapMarzPayStatus(providerStatus);
+
+    const rpcResult = await supabase.rpc('apply_marzpay_callback', {
+        p_transaction_ref: transactionRef,
+        p_provider_reference: providerRef,
+        p_provider_status: mappedStatus,
+        p_payload: payload || {},
+    });
+
+    if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
+        transition = rpcResult.data[0];
+    } else {
+        const canFallback = isMissingSchemaObject(rpcResult.error, 'apply_marzpay_callback') ||
+            isMissingSchemaObject(rpcResult.error, 'provider_reference');
+
+        if (!canFallback && rpcResult.error) {
+            throw rpcResult.error;
+        }
+
+        transition = await applyMarzpayCallbackFallback({
+            transactionRef,
+            providerRef,
+            providerStatus: mappedStatus,
+            payload: payload || {},
+        });
+    }
+
+    return transition;
 }
 
 async function initiatePayment(req, res, next) {
@@ -357,33 +430,12 @@ async function handleMarzpayCallback(req, res, next) {
             return res.status(400).json({ success: false, message: 'transactionRef/reference is required' });
         }
 
-        let transition = null;
-        const mappedStatus = mapMarzPayStatus(providerStatus);
-
-        const rpcResult = await supabase.rpc('apply_marzpay_callback', {
-            p_transaction_ref: transactionRef,
-            p_provider_reference: providerRef,
-            p_provider_status: mappedStatus,
-            p_payload: req.body || {},
+        const transition = await applyMarzpayTransition({
+            transactionRef,
+            providerRef,
+            providerStatus,
+            payload: req.body || {},
         });
-
-        if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
-            transition = rpcResult.data[0];
-        } else {
-            const canFallback = isMissingSchemaObject(rpcResult.error, 'apply_marzpay_callback') ||
-                isMissingSchemaObject(rpcResult.error, 'provider_reference');
-
-            if (!canFallback && rpcResult.error) {
-                throw rpcResult.error;
-            }
-
-            transition = await applyMarzpayCallbackFallback({
-                transactionRef,
-                providerRef,
-                providerStatus: mappedStatus,
-                payload: req.body || {},
-            });
-        }
 
         if (!transition) {
             return res.status(404).json({
@@ -448,6 +500,94 @@ async function handleMarzpayCallback(req, res, next) {
     }
 }
 
+async function reconcileMarzpayPayment(req, res) {
+    const schema = Joi.object({
+        transaction_ref: Joi.string().min(8).optional(),
+        provider_reference: Joi.string().min(4).optional(),
+        provider_uuid: Joi.string().min(8).optional(),
+    }).or('transaction_ref', 'provider_reference', 'provider_uuid');
+
+    const { error, value } = schema.validate(req.body || {});
+    if (error) {
+        return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    try {
+        let paymentQuery = supabase
+            .from('payments')
+            .select('id, report_id, resident_id, amount, transaction_ref, flw_ref, transaction_id');
+
+        if (value.transaction_ref) {
+            paymentQuery = paymentQuery.or(`transaction_ref.eq.${value.transaction_ref},flw_ref.eq.${value.transaction_ref}`);
+        } else if (value.provider_reference) {
+            paymentQuery = paymentQuery.or(`provider_reference.eq.${value.provider_reference},transaction_id.eq.${value.provider_reference}`);
+        } else {
+            paymentQuery = paymentQuery.eq('transaction_id', value.provider_uuid);
+        }
+
+        const { data: payment, error: paymentError } = await paymentQuery.limit(1).maybeSingle();
+        if (paymentError) {
+            throw paymentError;
+        }
+
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Payment not found for provided reference' });
+        }
+
+        const providerUuid = value.provider_uuid || payment.transaction_id;
+        let providerPayload = null;
+
+        if (providerUuid) {
+            providerPayload = await marzpayService.checkTransactionStatus(providerUuid);
+        } else {
+            const history = await marzpayService.getTransactionHistory({
+                reference: payment.transaction_ref || payment.flw_ref,
+            });
+
+            providerPayload = Array.isArray(history?.data)
+                ? { data: { transaction: history.data[0] || null } }
+                : history;
+        }
+
+        const extracted = extractLookupPayload(providerPayload || {});
+        const effectiveTransactionRef = payment.transaction_ref || payment.flw_ref || extracted.transactionRef;
+
+        if (!effectiveTransactionRef) {
+            return res.status(400).json({ success: false, message: 'Unable to determine transaction reference' });
+        }
+
+        const transition = await applyMarzpayTransition({
+            transactionRef: effectiveTransactionRef,
+            providerRef: extracted.providerRef || value.provider_reference || payment.transaction_id || null,
+            providerStatus: extracted.status,
+            payload: providerPayload || {},
+        });
+
+        if (!transition) {
+            return res.status(404).json({ success: false, message: 'Payment row exists but transition could not be applied' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Payment reconciliation completed',
+            data: {
+                payment_id: transition.payment_id,
+                report_id: transition.report_id,
+                previous_payment_status: transition.previous_payment_status,
+                new_payment_status: transition.new_payment_status,
+                previous_order_status: transition.previous_order_status,
+                new_order_status: transition.new_order_status,
+                provider_status: extracted.status,
+            },
+        });
+    } catch (reconcileError) {
+        return res.status(reconcileError.statusCode || 500).json({
+            success: false,
+            message: reconcileError.message || 'Failed to reconcile payment',
+        });
+    }
+}
+
 async function validatePhone(req, res) {
     const { error, value } = validatePhoneSchema.validate(req.body);
     if (error) {
@@ -497,5 +637,6 @@ module.exports = {
     validatePhone,
     getWalletBalance,
     getMarzpayTransactions,
+    reconcileMarzpayPayment,
     mapMarzPayStatus,
 };

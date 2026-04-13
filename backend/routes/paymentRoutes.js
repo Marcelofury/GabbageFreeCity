@@ -13,5 +13,6 @@ router.post('/marzpay/callback', paymentController.handleMarzpayCallback);
 router.post('/validate-phone', paymentController.validatePhone);
 router.get('/wallet-balance', authenticateToken, requireAdmin, paymentController.getWalletBalance);
 router.get('/marzpay-transactions', authenticateToken, requireAdmin, paymentController.getMarzpayTransactions);
+router.post('/reconcile', authenticateToken, requireAdmin, paymentController.reconcileMarzpayPayment);
 
 module.exports = router;

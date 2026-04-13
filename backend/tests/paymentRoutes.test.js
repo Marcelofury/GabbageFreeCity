@@ -21,6 +21,7 @@ jest.mock('../services/marzpayService', () => ({
     formatPhoneNumber: jest.fn(),
     validateMobileNumber: jest.fn(),
     collectMoney: jest.fn(),
+    checkTransactionStatus: jest.fn(),
     getWalletBalance: jest.fn(),
     getTransactionHistory: jest.fn(),
 }));
