@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/garbage_report.dart';
@@ -350,6 +351,23 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              final text =
+                  'Receipt: GFC-${report['id'] ?? '-'}\n'
+                  'Amount: UGX ${report['amount'] ?? '-'}\n'
+                  'Sacks: ${report['sackCount'] ?? '-'}\n'
+                  'Tx Ref: ${report['txRef']?.toString() ?? 'N/A'}\n'
+                  'Address: ${report['address']?.toString() ?? '-'}';
+              await Clipboard.setData(ClipboardData(text: text));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Receipt copied to clipboard')),
+                );
+              }
+            },
+            child: const Text('Copy'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
