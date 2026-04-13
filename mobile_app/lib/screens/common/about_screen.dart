@@ -63,7 +63,7 @@ class AboutScreen extends StatelessWidget {
               title: 'How It Works',
               content:
                   '1. Report garbage pile-ups using the app\n'
-                  '2. Enter sack count and get automatic pricing (UGX 2,000 per sack)\n'
+                  '2. Enter sack count and get automatic pricing (UGX 20 per sack)\n'
                   '3. Pay securely using Mobile Money via MarzPay\n'
                   '4. Collector is assigned and completes with resident QR verification\n'
                   '5. Track status and receipt from your report details',
@@ -73,11 +73,11 @@ class AboutScreen extends StatelessWidget {
             _buildSection(
               title: 'Current Collection Pricing',
               content:
-                  'Rate: UGX 2,000 per sack\n'
+                  'Rate: UGX 20 per sack\n'
                   'Examples:\n'
-                  '1 sack = UGX 2,000\n'
-                  '2 sacks = UGX 4,000\n'
-                  '5 sacks = UGX 10,000\n\n'
+                  '1 sack = UGX 20\n'
+                  '2 sacks = UGX 40\n'
+                  '5 sacks = UGX 100\n\n'
                   'Pricing is automatically calculated in the app before payment.',
               icon: Icons.money,
             ),
