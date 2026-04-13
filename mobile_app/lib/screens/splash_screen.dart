@@ -28,7 +28,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (authProvider.isAuthenticated) {
-      if (authProvider.isResident) {
+      if (authProvider.isAdmin) {
+        Navigator.pushReplacementNamed(context, '/admin-home');
+      } else if (authProvider.isResident) {
         Navigator.pushReplacementNamed(context, '/resident-home');
       } else {
         Navigator.pushReplacementNamed(context, '/collector-home');

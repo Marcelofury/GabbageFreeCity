@@ -6,7 +6,7 @@ class User {
   final String username;
   final String phoneNumber;
   final String fullName;
-  final String userType; // 'resident' or 'collector'
+  final String userType; // 'resident', 'collector', or 'admin'
   final String? email;
   final String? area;
   final bool isActive;
@@ -50,4 +50,5 @@ class User {
 
   bool get isResident => userType == 'resident';
   bool get isCollector => userType == 'collector';
+  bool get isAdmin => userType == 'admin';
 }

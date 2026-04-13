@@ -7,6 +7,7 @@ jest.mock('../middleware/auth', () => ({
         return next();
     },
     requireUserType: () => (req, res, next) => next(),
+    requireAdmin: (req, res, next) => next(),
 }));
 
 jest.mock('../config/supabase', () => ({

@@ -64,7 +64,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      if (authProvider.isResident) {
+      if (authProvider.isAdmin) {
+        Navigator.pushReplacementNamed(context, '/admin-home');
+      } else if (authProvider.isResident) {
         Navigator.pushReplacementNamed(context, '/resident-home');
       } else {
         Navigator.pushReplacementNamed(context, '/collector-home');

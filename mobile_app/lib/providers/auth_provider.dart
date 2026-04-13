@@ -23,6 +23,7 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _user != null && _token != null;
   bool get isResident => _user?.isResident ?? false;
   bool get isCollector => _user?.isCollector ?? false;
+  bool get isAdmin => _user?.isAdmin ?? false;
 
   /// Initialize and check if user is already logged in
   Future<void> initialize() async {

@@ -79,7 +79,36 @@ function requireUserType(...allowedTypes) {
     };
 }
 
+/**
+ * Require admin privileges
+ */
+function requireAdmin(req, res, next) {
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required'
+        });
+    }
+
+    const adminUserIds = (process.env.ADMIN_USER_IDS || '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+    const isAdmin = req.user.user_type === 'admin' || req.user.is_admin === true || adminUserIds.includes(req.user.id);
+
+    if (!isAdmin) {
+        return res.status(403).json({
+            success: false,
+            message: 'Admin access required'
+        });
+    }
+
+    return next();
+}
+
 module.exports = {
     authenticateToken,
-    requireUserType
+    requireUserType,
+    requireAdmin
 };

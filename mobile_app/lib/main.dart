@@ -24,7 +24,11 @@ import 'screens/collector/qr_scanner_screen.dart';
 import 'screens/collector/history_screen.dart';
 import 'screens/collector/assignment_details_screen.dart';
 import 'screens/collector/collector_profile_screen.dart';
+import 'screens/admin/admin_home_screen.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/admin/admin_collectors_screen.dart';
 import 'providers/auth_provider.dart';
+import 'providers/admin_provider.dart';
 import 'providers/collector_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/notification_provider.dart';
@@ -48,6 +52,7 @@ class GarbageFreeCityApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => CollectorProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
@@ -120,6 +125,9 @@ class GarbageFreeCityApp extends StatelessWidget {
           '/qr-scanner': (context) => const QRScannerScreen(),
           '/history': (context) => const HistoryScreen(),
           '/collector-profile': (context) => const CollectorProfileScreen(),
+          '/admin-home': (context) => const AdminHomeScreen(),
+          '/admin-dashboard': (context) => const AdminDashboardScreen(),
+          '/admin-collectors': (context) => const AdminCollectorsScreen(),
         },
       ),
     );

@@ -18,6 +18,7 @@ const garbageReportRoutes = require('./routes/garbageReportRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const collectorRoutes = require('./routes/collectorRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -73,12 +74,13 @@ app.get('/health', (req, res) => {
     });
 });
 
-// API Routes
+// API Routes   
 app.use('/api/auth', authRoutes);
 app.use('/api/garbage-reports', garbageReportRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/collectors', collectorRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {

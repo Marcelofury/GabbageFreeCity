@@ -5,25 +5,8 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireUserType } = require('../middleware/auth');
+const { authenticateToken, requireUserType, requireAdmin } = require('../middleware/auth');
 const paymentController = require('../controllers/paymentController');
-
-function requireAdmin(req, res, next) {
-    const adminUserIds = (process.env.ADMIN_USER_IDS || '')
-        .split(',')
-        .map((id) => id.trim())
-        .filter(Boolean);
-
-    const isAdmin = req.user?.is_admin === true || adminUserIds.includes(req.user?.id);
-    if (!isAdmin) {
-        return res.status(403).json({
-            success: false,
-            message: 'Admin access required',
-        });
-    }
-
-    return next();
-}
 
 router.post('/initiate', authenticateToken, requireUserType('resident'), paymentController.initiatePayment);
 router.post('/marzpay/callback', paymentController.handleMarzpayCallback);
