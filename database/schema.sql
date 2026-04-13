@@ -16,7 +16,8 @@ CREATE TABLE users (
     password_hash TEXT,
     phone_number VARCHAR(15) UNIQUE NOT NULL, -- Uganda format: +256XXXXXXXXX
     full_name VARCHAR(100) NOT NULL,
-    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('resident', 'collector')),
+    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('resident', 'collector', 'admin')),
+    is_admin BOOLEAN DEFAULT false,
     email VARCHAR(100),
     
     -- Location data using PostGIS geography type
@@ -33,7 +34,8 @@ CREATE TABLE users (
     -- Index for faster location queries
     CONSTRAINT valid_user_type CHECK (
         (user_type = 'resident' AND home_location IS NOT NULL) OR
-        (user_type = 'collector')
+        (user_type = 'collector') OR
+        (user_type = 'admin')
     )
 );
 
@@ -43,6 +45,7 @@ CREATE INDEX idx_users_current_location ON users USING GIST(current_location);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_users_type ON users(user_type);
+CREATE INDEX idx_users_is_admin ON users(is_admin);
 
 -- =====================================================
 -- GARBAGE_REPORTS TABLE
@@ -58,6 +61,7 @@ CREATE TABLE garbage_reports (
     
     -- Report details
     garbage_type VARCHAR(50) DEFAULT 'mixed', -- mixed, plastic, organic, etc.
+    sack_count INTEGER NOT NULL DEFAULT 1 CHECK (sack_count >= 1),
     estimated_volume VARCHAR(20), -- small, medium, large
     photo_url TEXT, -- Optional photo evidence
     description TEXT,

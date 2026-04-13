@@ -30,7 +30,7 @@ class ReportProvider with ChangeNotifier {
     required double latitude,
     required double longitude,
     required String addressDescription,
-    required String estimatedVolume,
+    required int sackCount,
     String garbageType = 'mixed',
     String? photoUrl,
   }) async {
@@ -43,7 +43,7 @@ class ReportProvider with ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
         addressDescription: addressDescription,
-        estimatedVolume: estimatedVolume,
+        sackCount: sackCount,
         garbageType: garbageType,
         photoUrl: photoUrl,
       );

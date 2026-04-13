@@ -120,7 +120,7 @@ class ApiService {
     required double latitude,
     required double longitude,
     required String addressDescription,
-    required String estimatedVolume,
+    required int sackCount,
     String garbageType = 'mixed',
     String? photoUrl,
   }) async {
@@ -131,7 +131,7 @@ class ApiService {
       'latitude': latitude,
       'longitude': longitude,
       'address_description': addressDescription,
-      'estimated_volume': estimatedVolume,
+      'sack_count': sackCount,
       'garbage_type': garbageType,
     };
     
@@ -365,6 +365,53 @@ class ApiService {
     }
   }
 
+  /// Get collector profile and live stats
+  Future<Map<String, dynamic>> getCollectorProfile() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/collectors/profile'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Update collector profile/settings
+  Future<Map<String, dynamic>> updateCollectorProfile({
+    String? fullName,
+    String? area,
+    bool? isActive,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final body = <String, dynamic>{
+        if (fullName != null) 'full_name': fullName,
+        if (area != null) 'area': area,
+        if (isActive != null) 'is_active': isActive,
+      };
+
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/collectors/profile'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Get notifications for authenticated user
   Future<Map<String, dynamic>> getNotifications({int limit = 50, int offset = 0}) async {
     try {
@@ -411,6 +458,72 @@ class ApiService {
       final response = await http.patch(
         Uri.parse('$BASE_URL/notifications/read-all'),
         headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get admin dashboard metrics
+  Future<Map<String, dynamic>> getAdminDashboard() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/admin/dashboard'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get collectors for admin management
+  Future<Map<String, dynamic>> getAdminCollectors({
+    String search = '',
+    String status = 'all',
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final query = Uri(queryParameters: {
+        if (search.isNotEmpty) 'search': search,
+        'status': status,
+      }).query;
+
+      final response = await http.get(
+        Uri.parse('$BASE_URL/admin/collectors?$query'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Activate/deactivate collector
+  Future<Map<String, dynamic>> updateCollectorActiveStatus({
+    required String collectorId,
+    required bool isActive,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.patch(
+        Uri.parse('$BASE_URL/admin/collectors/$collectorId/status'),
+        headers: headers,
+        body: jsonEncode({'is_active': isActive}),
       );
 
       return jsonDecode(response.body);

@@ -214,7 +214,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Volume: ${report.estimatedVolume}',
+                                            'Sacks: ${report.sackCount}',
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: Colors.grey[600],

@@ -16,7 +16,7 @@ const createReportSchema = Joi.object({
     longitude: Joi.number().min(-180).max(180).required(),
     address_description: Joi.string().max(500).required(),
     garbage_type: Joi.string().valid('mixed', 'plastic', 'organic', 'electronic', 'hazardous').default('mixed'),
-    estimated_volume: Joi.string().valid('small', 'medium', 'large').required(),
+    sack_count: Joi.number().integer().min(1).max(100).required(),
     photo_url: Joi.string().uri().allow('', null).optional()
 });
 
@@ -35,7 +35,9 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             });
         }
 
-        const { latitude, longitude, address_description, garbage_type, estimated_volume, photo_url } = value;
+        const { latitude, longitude, address_description, garbage_type, sack_count, photo_url } = value;
+        const unitPrice = parseFloat(process.env.SACK_PRICE_UGX || 2000);
+        const paymentAmount = sack_count * unitPrice;
 
         // Create report
         const reportData = {
@@ -43,11 +45,12 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             location: `POINT(${longitude} ${latitude})`,
             address_description,
             garbage_type,
-            estimated_volume,
+            sack_count,
+            estimated_volume: `${sack_count} sack${sack_count === 1 ? '' : 's'}`,
             photo_url,
             status: 'pending',
             payment_required: true,
-            payment_amount: parseFloat(process.env.DEFAULT_COLLECTION_FEE || 5000),
+            payment_amount: paymentAmount,
             reported_at: new Date().toISOString()
         };
 
@@ -66,6 +69,7 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             message: 'Garbage report created successfully',
             data: {
                 report_id: report.id,
+                sack_count: report.sack_count,
                 status: report.status,
                 payment_amount: report.payment_amount,
                 currency: 'UGX'
@@ -169,6 +173,40 @@ router.get('/nearby', authenticateToken, requireUserType('collector'), async (re
                 radius_meters: parseInt(radius)
             });
 
+        const normalizeWithCoords = async (rows) => {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const missingCoordIds = safeRows
+                .filter((row) => (row.latitude == null || row.longitude == null) && row.id)
+                .map((row) => String(row.id).replace(/'/g, "''"));
+
+            if (missingCoordIds.length === 0) {
+                return safeRows;
+            }
+
+            const sql = `
+                SELECT id::text AS id,
+                       ST_Y(location::geometry) AS lat,
+                       ST_X(location::geometry) AS lng
+                FROM garbage_reports
+                WHERE id IN (${missingCoordIds.map((id) => `'${id}'`).join(',')})
+            `;
+
+            const { data: coordsData } = await supabase.rpc('exec_sql', { sql });
+            const coordsMap = (coordsData || []).reduce((acc, entry) => {
+                acc[entry.id] = {
+                    latitude: entry.lat,
+                    longitude: entry.lng,
+                };
+                return acc;
+            }, {});
+
+            return safeRows.map((row) => ({
+                ...row,
+                latitude: row.latitude ?? coordsMap[row.id]?.latitude ?? null,
+                longitude: row.longitude ?? coordsMap[row.id]?.longitude ?? null,
+            }));
+        };
+
         if (error) {
             // Fallback: get all pending reports
             const { data: allReports, error: fetchError } = await supabase
@@ -185,15 +223,19 @@ router.get('/nearby', authenticateToken, requireUserType('collector'), async (re
 
             if (fetchError) throw fetchError;
 
+            const reportsWithCoords = await normalizeWithCoords(allReports || []);
+
             return res.json({
                 success: true,
-                data: { reports: allReports }
+                data: { reports: reportsWithCoords }
             });
         }
 
+        const reportsWithCoords = await normalizeWithCoords(reports || []);
+
         res.json({
             success: true,
-            data: { reports }
+            data: { reports: reportsWithCoords }
         });
 
     } catch (error) {

@@ -15,7 +15,9 @@ class ReportGarbageScreen extends StatefulWidget {
 class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   final MapController _mapController = MapController();
   final _descriptionController = TextEditingController();
-  String _selectedVolume = 'medium';
+  int _sackCount = 1;
+
+  int get _calculatedAmount => _sackCount * 2000;
 
   @override
   void initState() {
@@ -90,7 +92,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
       latitude: locationProvider.currentPosition!.latitude,
       longitude: locationProvider.currentPosition!.longitude,
       addressDescription: _descriptionController.text,
-      estimatedVolume: _selectedVolume,
+      sackCount: _sackCount,
     );
 
     if (!mounted) return;
@@ -222,19 +224,62 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                         maxLines: 2,
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedVolume,
-                        decoration: const InputDecoration(labelText: 'Volume'),
-                        items: const [
-                          DropdownMenuItem(value: 'small', child: Text('Small')),
-                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                          DropdownMenuItem(value: 'large', child: Text('Large')),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedVolume = value!;
-                          });
-                        },
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Number of Sacks',
+                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text('UGX 2,000 per sack'),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _sackCount > 1
+                                  ? () {
+                                      setState(() {
+                                        _sackCount -= 1;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.remove_circle_outline),
+                            ),
+                            Text(
+                              '$_sackCount',
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _sackCount += 1;
+                                });
+                              },
+                              icon: const Icon(Icons.add_circle_outline),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Calculated Fee: UGX $_calculatedAmount',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -250,7 +295,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Submit Report (UGX 5,000)'),
+                              : Text('Submit Report (UGX $_calculatedAmount)'),
                         ),
                       ),
                     ],

@@ -8,11 +8,14 @@ class GarbageReport {
   final double longitude;
   final String addressDescription;
   final String garbageType;
+  final int sackCount;
   final String estimatedVolume;
   final String? photoUrl;
   final String status;
   final bool paymentRequired;
   final double paymentAmount;
+  final String paymentStatus;
+  final String? transactionRef;
   final String? assignedCollectorId;
   final DateTime reportedAt;
   final DateTime? assignedAt;
@@ -25,11 +28,14 @@ class GarbageReport {
     required this.longitude,
     required this.addressDescription,
     required this.garbageType,
+    required this.sackCount,
     required this.estimatedVolume,
     this.photoUrl,
     required this.status,
     required this.paymentRequired,
     required this.paymentAmount,
+    required this.paymentStatus,
+    this.transactionRef,
     this.assignedCollectorId,
     required this.reportedAt,
     this.assignedAt,
@@ -64,11 +70,14 @@ class GarbageReport {
       longitude: longitude ?? 32.5825,
       addressDescription: json['address_description'] ?? 'Unknown location',
       garbageType: json['garbage_type'] ?? 'mixed',
-      estimatedVolume: json['estimated_volume'] ?? 'medium',
+      sackCount: _parseSackCount(json['sack_count'], json['estimated_volume']),
+      estimatedVolume: _estimatedVolumeLabel(_parseSackCount(json['sack_count'], json['estimated_volume'])),
       photoUrl: json['photo_url'],
       status: json['status'] ?? 'pending',
       paymentRequired: json['payment_required'] ?? true,
-      paymentAmount: (json['payment_amount'] ?? 5000).toDouble(),
+      paymentAmount: _parseAmount(json['payment_amount']),
+      paymentStatus: _parsePaymentStatus(json),
+      transactionRef: _parseTransactionRef(json),
       assignedCollectorId: json['assigned_collector_id'],
       reportedAt: DateTime.parse(json['reported_at']),
       assignedAt: json['assigned_at'] != null 
@@ -78,6 +87,63 @@ class GarbageReport {
           ? DateTime.parse(json['completed_at']) 
           : null,
     );
+  }
+
+  static String _parsePaymentStatus(Map<String, dynamic> json) {
+    final payments = json['payments'];
+    if (payments is List && payments.isNotEmpty && payments.first is Map<String, dynamic>) {
+      final status = (payments.first['payment_status'] ?? '').toString();
+      if (status.isNotEmpty) {
+        return status;
+      }
+    }
+
+    final directStatus = (json['payment_status'] ?? '').toString();
+    if (directStatus.isNotEmpty) {
+      return directStatus;
+    }
+
+    return 'pending';
+  }
+
+  static String? _parseTransactionRef(Map<String, dynamic> json) {
+    final payments = json['payments'];
+    if (payments is List && payments.isNotEmpty && payments.first is Map<String, dynamic>) {
+      return payments.first['transaction_id']?.toString();
+    }
+
+    return null;
+  }
+
+  static int _parseSackCount(dynamic sackCountRaw, dynamic estimatedVolumeRaw) {
+    if (sackCountRaw is num && sackCountRaw >= 1) {
+      return sackCountRaw.toInt();
+    }
+
+    final parsedDirect = int.tryParse(sackCountRaw?.toString() ?? '');
+    if (parsedDirect != null && parsedDirect >= 1) {
+      return parsedDirect;
+    }
+
+    final estimatedText = (estimatedVolumeRaw ?? '').toString().toLowerCase();
+    final extracted = RegExp(r'(\d+)').firstMatch(estimatedText)?.group(1);
+    final parsedExtracted = int.tryParse(extracted ?? '');
+    if (parsedExtracted != null && parsedExtracted >= 1) {
+      return parsedExtracted;
+    }
+
+    return 1;
+  }
+
+  static String _estimatedVolumeLabel(int sacks) {
+    return '$sacks sack${sacks == 1 ? '' : 's'}';
+  }
+
+  static double _parseAmount(dynamic amountRaw) {
+    if (amountRaw is num) {
+      return amountRaw.toDouble();
+    }
+    return double.tryParse(amountRaw?.toString() ?? '') ?? 5000;
   }
 
   static double? _extractLatitude(dynamic location) {
