@@ -1,4 +1,4 @@
--- Migration: move report pricing to sack-based model (UGX 20 per sack)
+-- Migration: move report pricing to sack-based model (UGX 500 per sack)
 
 ALTER TABLE garbage_reports
     ADD COLUMN IF NOT EXISTS sack_count INTEGER NOT NULL DEFAULT 1;
@@ -20,9 +20,9 @@ SET sack_count = CASE
 END
 WHERE sack_count IS NULL OR sack_count < 1;
 
--- Recompute amount from sack count using UGX 20 per sack.
+-- Recompute amount from sack count using UGX 500 per sack.
 UPDATE garbage_reports
-SET payment_amount = sack_count * 20
+SET payment_amount = sack_count * 500
 WHERE payment_required = true;
 
 -- Keep a readable label in estimated_volume for backward compatibility.

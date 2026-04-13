@@ -4,7 +4,7 @@ const marzpayService = require('../services/marzpayService');
 const { supabase } = require('../config/supabase');
 const { createNotification } = require('../services/notificationService');
 
-const MIN_AMOUNT = Number(process.env.MARZPAY_MIN_AMOUNT || 20);
+const MIN_AMOUNT = Number(process.env.MARZPAY_MIN_AMOUNT || 500);
 const MAX_AMOUNT = 10000000;
 
 const initiatePaymentSchema = Joi.object({

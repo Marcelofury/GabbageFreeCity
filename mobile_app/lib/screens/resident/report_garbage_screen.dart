@@ -16,8 +16,9 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   final MapController _mapController = MapController();
   final _descriptionController = TextEditingController();
   int _sackCount = 1;
+  static const int _sackPriceUgx = 500;
 
-  int get _calculatedAmount => _sackCount * 20;
+  int get _calculatedAmount => _sackCount * _sackPriceUgx;
 
   @override
   void initState() {
@@ -241,7 +242,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   SizedBox(height: 4),
-                                  Text('UGX 20 per sack'),
+                                  Text('UGX $_sackPriceUgx per sack'),
                                 ],
                               ),
                             ),

@@ -36,7 +36,7 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
         }
 
         const { latitude, longitude, address_description, garbage_type, sack_count, photo_url } = value;
-        const unitPrice = parseFloat(process.env.SACK_PRICE_UGX || 20);
+        const unitPrice = parseFloat(process.env.SACK_PRICE_UGX || 500);
         const paymentAmount = sack_count * unitPrice;
 
         // Create report
