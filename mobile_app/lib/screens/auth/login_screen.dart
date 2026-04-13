@@ -10,9 +10,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const String _adminUsername = 'admin';
-  static const String _adminPassword = 'Admin@12345';
-
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -51,12 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
-  }
-
-  Future<void> _handleAdminQuickLogin() async {
-    _usernameController.text = _adminUsername;
-    _passwordController.text = _adminPassword;
-    await _handleLogin();
   }
 
   @override
@@ -143,12 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         )
                       : const Text('Login'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: authProvider.isLoading ? null : _handleAdminQuickLogin,
-                  icon: const Icon(Icons.admin_panel_settings_outlined),
-                  label: const Text('Quick Admin Login'),
                 ),
                 const SizedBox(height: 16),
                 TextButton(

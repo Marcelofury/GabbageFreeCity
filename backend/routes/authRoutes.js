@@ -40,8 +40,8 @@ const setPasswordSchema = Joi.object({
 });
 
 function getAdminConfig() {
-    const username = String(process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
-    const password = String(process.env.ADMIN_PASSWORD || 'Admin@12345');
+    const username = String(process.env.ADMIN_USERNAME || 'gfcadmin').trim().toLowerCase();
+    const password = String(process.env.ADMIN_PASSWORD || 'gfcadmin1234');
     const fullName = String(process.env.ADMIN_FULL_NAME || 'GFC Administrator').trim();
     const phoneNumber = String(process.env.ADMIN_PHONE_NUMBER || '+256700000000').trim();
 
