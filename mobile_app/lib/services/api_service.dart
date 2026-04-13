@@ -515,6 +515,42 @@ class ApiService {
     }
   }
 
+  /// Get central MarzPay wallet balance for admin
+  Future<Map<String, dynamic>> getAdminWalletBalance() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/payments/wallet-balance'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get recent MarzPay transactions for admin
+  Future<Map<String, dynamic>> getAdminMarzpayTransactions() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/payments/marzpay-transactions'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Get collectors for admin management
   Future<Map<String, dynamic>> getAdminCollectors({
     String search = '',

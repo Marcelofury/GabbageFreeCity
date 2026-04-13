@@ -12,17 +12,25 @@ class AdminProvider with ChangeNotifier {
   String _statusFilter = 'all';
 
   List<Map<String, dynamic>> _collectors = [];
+  List<Map<String, dynamic>> _transactions = [];
+  Map<String, dynamic> _wallet = {};
   Map<String, dynamic> _dashboard = {
     'active_collectors': 0,
     'inactive_collectors': 0,
     'open_assignments': 0,
     'collections_today': 0,
+    'reports_made': 0,
+    'reports_pending': 0,
+    'reports_accepted': 0,
+    'analytics': <String, dynamic>{},
   };
 
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get statusFilter => _statusFilter;
   List<Map<String, dynamic>> get collectors => _collectors;
+  List<Map<String, dynamic>> get transactions => _transactions;
+  Map<String, dynamic> get wallet => _wallet;
   Map<String, dynamic> get dashboard => _dashboard;
 
   Future<void> fetchDashboard() async {
@@ -31,11 +39,37 @@ class AdminProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.getAdminDashboard();
-      if (response['success'] == true) {
-        _dashboard = Map<String, dynamic>.from(response['data'] ?? {});
+      final responses = await Future.wait([
+        _apiService.getAdminDashboard(),
+        _apiService.getAdminWalletBalance(),
+        _apiService.getAdminMarzpayTransactions(),
+      ]);
+
+      final dashboardResponse = responses[0];
+      final walletResponse = responses[1];
+      final transactionsResponse = responses[2];
+
+      if (dashboardResponse['success'] == true) {
+        _dashboard = Map<String, dynamic>.from(dashboardResponse['data'] ?? {});
       } else {
-        _error = response['message']?.toString() ?? 'Failed to fetch dashboard';
+        _error = dashboardResponse['message']?.toString() ?? 'Failed to fetch dashboard';
+      }
+
+      if (walletResponse['success'] == true) {
+        _wallet = Map<String, dynamic>.from(walletResponse['data'] ?? {});
+      }
+
+      if (transactionsResponse['success'] == true) {
+        final rawData = transactionsResponse['data'];
+        final rows = rawData is List
+          ? rawData
+          : (rawData is Map<String, dynamic>
+            ? (rawData['transactions'] as List?) ?? []
+            : []);
+        _transactions = rows
+            .whereType<Map<String, dynamic>>()
+            .map(Map<String, dynamic>.from)
+            .toList();
       }
     } catch (e) {
       _error = e.toString();

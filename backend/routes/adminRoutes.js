@@ -11,7 +11,18 @@ router.use(authenticateToken, requireAdmin);
  */
 router.get('/dashboard', async (req, res, next) => {
     try {
-        const [{ count: activeCollectors, error: activeError }, { count: inactiveCollectors, error: inactiveError }, { count: openAssignments, error: assignmentError }, { count: collectionsToday, error: completedError }] = await Promise.all([
+        const [
+            { count: activeCollectors, error: activeError },
+            { count: inactiveCollectors, error: inactiveError },
+            { count: openAssignments, error: assignmentError },
+            { count: collectionsToday, error: collectionsTodayError },
+            { count: totalReports, error: totalReportsError },
+            { count: pendingReports, error: pendingReportsError },
+            { count: acceptedReports, error: acceptedReportsError },
+            { count: completedReports, error: completedReportsError },
+            { data: paidPayments, error: paidPaymentsError },
+            { data: completionSamples, error: completionSamplesError },
+        ] = await Promise.all([
             supabase
                 .from('users')
                 .select('*', { count: 'exact', head: true })
@@ -31,11 +42,71 @@ router.get('/dashboard', async (req, res, next) => {
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'completed')
                 .gte('completed_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true }),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending'),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .in('status', ['assigned', 'in_progress', 'completed']),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'completed'),
+            supabase
+                .from('payments')
+                .select('amount')
+                .eq('payment_status', 'successful'),
+            supabase
+                .from('garbage_reports')
+                .select('reported_at, completed_at')
+                .eq('status', 'completed')
+                .not('completed_at', 'is', null)
+                .order('completed_at', { ascending: false })
+                .limit(200),
         ]);
 
-        if (activeError || inactiveError || assignmentError || completedError) {
-            throw activeError || inactiveError || assignmentError || completedError;
+        if (
+            activeError || inactiveError || assignmentError || collectionsTodayError ||
+            totalReportsError || pendingReportsError || acceptedReportsError ||
+            completedReportsError || paidPaymentsError || completionSamplesError
+        ) {
+            throw (
+                activeError || inactiveError || assignmentError || collectionsTodayError ||
+                totalReportsError || pendingReportsError || acceptedReportsError ||
+                completedReportsError || paidPaymentsError || completionSamplesError
+            );
         }
+
+        const totalRevenueUgx = (paidPayments || []).reduce((sum, row) => {
+            const amount = Number(row.amount || 0);
+            return sum + (Number.isFinite(amount) ? amount : 0);
+        }, 0);
+
+        const completionDurations = (completionSamples || [])
+            .map((row) => {
+                const reported = row.reported_at ? new Date(row.reported_at).getTime() : null;
+                const completed = row.completed_at ? new Date(row.completed_at).getTime() : null;
+                if (!reported || !completed || completed < reported) {
+                    return null;
+                }
+                return (completed - reported) / (1000 * 60);
+            })
+            .filter((value) => value != null);
+
+        const avgCompletionMinutes = completionDurations.length > 0
+            ? Math.round(completionDurations.reduce((sum, value) => sum + value, 0) / completionDurations.length)
+            : 0;
+
+        const completedCount = completedReports || 0;
+        const totalCount = totalReports || 0;
+        const completionRate = totalCount > 0
+            ? Number(((completedCount / totalCount) * 100).toFixed(1))
+            : 0;
 
         return res.json({
             success: true,
@@ -44,6 +115,15 @@ router.get('/dashboard', async (req, res, next) => {
                 inactive_collectors: inactiveCollectors || 0,
                 open_assignments: openAssignments || 0,
                 collections_today: collectionsToday || 0,
+                reports_made: totalCount,
+                reports_pending: pendingReports || 0,
+                reports_accepted: acceptedReports || 0,
+                analytics: {
+                    completion_rate_percent: completionRate,
+                    total_revenue_ugx: totalRevenueUgx,
+                    average_completion_minutes: avgCompletionMinutes,
+                    paid_transactions: (paidPayments || []).length,
+                },
             },
         });
     } catch (error) {
