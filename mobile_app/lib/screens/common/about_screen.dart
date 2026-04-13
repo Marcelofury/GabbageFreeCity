@@ -55,7 +55,7 @@ class AboutScreen extends StatelessWidget {
             _buildSection(
               title: 'Our Mission',
               content:
-                  'To provide efficient and sustainable waste management services to all residents of Kampala, ensuring a clean and healthy environment for everyone.',
+                  'To deliver accountable, technology-enabled waste management for Kampala residents through accurate reporting, fair pricing, and traceable collection workflows.',
               icon: Icons.flag,
             ),
             const SizedBox(height: 16),
@@ -63,20 +63,34 @@ class AboutScreen extends StatelessWidget {
               title: 'How It Works',
               content:
                   '1. Report garbage pile-ups using the app\n'
-                  '2. Pay the collection fee via mobile money\n'
-                  '3. Our collectors will be assigned to your location\n'
-                  '4. Track collection progress in real-time',
+                  '2. Enter sack count and get automatic pricing (UGX 2,000 per sack)\n'
+                  '3. Pay securely using Mobile Money via MarzPay\n'
+                  '4. Collector is assigned and completes with resident QR verification\n'
+                  '5. Track status and receipt from your report details',
               icon: Icons.info_outline,
             ),
             const SizedBox(height: 16),
             _buildSection(
-              title: 'Collection Fees',
+              title: 'Current Collection Pricing',
               content:
-                  'Small pile: UGX 3,000\n'
-                  'Medium pile: UGX 5,000\n'
-                  'Large pile: UGX 10,000\n\n'
-                  'Payment goes directly to supporting our waste management infrastructure.',
+                  'Rate: UGX 2,000 per sack\n'
+                  'Examples:\n'
+                  '1 sack = UGX 2,000\n'
+                  '2 sacks = UGX 4,000\n'
+                  '5 sacks = UGX 10,000\n\n'
+                  'Pricing is automatically calculated in the app before payment.',
               icon: Icons.money,
+            ),
+            const SizedBox(height: 16),
+            _buildSection(
+              title: 'Operational Integrity Features',
+              content:
+                  '• Admin oversight for collector management\n'
+                  '• Location-based collector assignment\n'
+                  '• Final collection confirmation by QR scan\n'
+                  '• In-app notifications and report history\n'
+                  '• Receipt visibility for paid reports',
+              icon: Icons.verified_user_outlined,
             ),
             const SizedBox(height: 24),
             const Divider(),
