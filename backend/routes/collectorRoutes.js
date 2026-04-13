@@ -11,6 +11,55 @@ const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
 const { createNotification } = require('../services/notificationService');
 
+const updateProfileSchema = Joi.object({
+    full_name: Joi.string().min(2).max(100).optional(),
+    area: Joi.string().max(100).allow('', null).optional(),
+    is_active: Joi.boolean().optional(),
+}).or('full_name', 'area', 'is_active');
+
+async function attachReportCoordinates(reports) {
+    if (!Array.isArray(reports) || reports.length === 0) {
+        return [];
+    }
+
+    const reportIds = reports
+        .map((report) => report.id)
+        .filter(Boolean);
+
+    if (reportIds.length === 0) {
+        return reports;
+    }
+
+    const escapedIds = reportIds
+        .map((id) => String(id).replace(/'/g, "''"))
+        .map((id) => `'${id}'`)
+        .join(',');
+
+    const sql = `
+        SELECT id::text AS id,
+               ST_Y(location::geometry) AS lat,
+               ST_X(location::geometry) AS lng
+        FROM garbage_reports
+        WHERE id IN (${escapedIds})
+    `;
+
+    const { data: coordsData } = await supabase.rpc('exec_sql', { sql });
+
+    const coordMap = (coordsData || []).reduce((acc, row) => {
+        acc[row.id] = {
+            latitude: row.lat ?? null,
+            longitude: row.lng ?? null,
+        };
+        return acc;
+    }, {});
+
+    return reports.map((report) => ({
+        ...report,
+        latitude: coordMap[report.id]?.latitude ?? null,
+        longitude: coordMap[report.id]?.longitude ?? null,
+    }));
+}
+
 /**
  * PATCH /api/collectors/location
  * Update collector's current location
@@ -72,9 +121,11 @@ router.get('/my-assignments', authenticateToken, requireUserType('collector'), a
             throw error;
         }
 
+        const reportsWithCoords = await attachReportCoordinates(reports || []);
+
         res.json({
             success: true,
-            data: { reports }
+            data: { reports: reportsWithCoords }
         });
 
     } catch (error) {
@@ -97,6 +148,31 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
             });
         }
 
+        let parsedQr = null;
+        try {
+            parsedQr = JSON.parse(String(qr_code_data || ''));
+        } catch (_) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid QR payload. Scan a resident report QR code.',
+            });
+        }
+
+        const qrReportId = parsedQr?.report_id ? String(parsedQr.report_id) : null;
+        if (!qrReportId || qrReportId !== String(report_id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'QR code does not match this assignment report.',
+            });
+        }
+
+        if (parsedQr?.app && parsedQr.app !== 'GFC') {
+            return res.status(400).json({
+                success: false,
+                message: 'Unsupported QR code source.',
+            });
+        }
+
         // Verify report is assigned to this collector
         const { data: report, error: reportError } = await supabase
             .from('garbage_reports')
@@ -109,6 +185,13 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
             return res.status(404).json({
                 success: false,
                 message: 'Report not found or not assigned to you'
+            });
+        }
+
+        if (report.status !== 'in_progress') {
+            return res.status(400).json({
+                success: false,
+                message: 'Report must be in progress before final QR verification.',
             });
         }
 
@@ -170,6 +253,116 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
 
     } catch (error) {
         next(error);
+    }
+});
+
+/**
+ * GET /api/collectors/profile
+ * Get collector profile with live stats
+ */
+router.get('/profile', authenticateToken, requireUserType('collector'), async (req, res, next) => {
+    try {
+        const [{ count: assignedCount, error: assignedError }, { count: inProgressCount, error: inProgressError }, { count: completedCount, error: completedError }, { data: completedRows, error: completedRowsError }] = await Promise.all([
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_collector_id', req.user.id)
+                .eq('status', 'assigned'),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_collector_id', req.user.id)
+                .eq('status', 'in_progress'),
+            supabase
+                .from('garbage_reports')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_collector_id', req.user.id)
+                .eq('status', 'completed'),
+            supabase
+                .from('garbage_reports')
+                .select('payment_amount')
+                .eq('assigned_collector_id', req.user.id)
+                .eq('status', 'completed'),
+        ]);
+
+        if (assignedError || inProgressError || completedError || completedRowsError) {
+            throw assignedError || inProgressError || completedError || completedRowsError;
+        }
+
+        const totalEarnings = (completedRows || []).reduce((sum, row) => {
+            const amount = Number(row.payment_amount || 0);
+            return sum + (Number.isFinite(amount) ? amount : 0);
+        }, 0);
+
+        return res.json({
+            success: true,
+            data: {
+                profile: {
+                    id: req.user.id,
+                    username: req.user.username,
+                    full_name: req.user.full_name,
+                    phone_number: req.user.phone_number,
+                    area: req.user.area,
+                    is_active: req.user.is_active,
+                    created_at: req.user.created_at,
+                },
+                stats: {
+                    assigned_count: assignedCount || 0,
+                    in_progress_count: inProgressCount || 0,
+                    completed_count: completedCount || 0,
+                    total_earnings: totalEarnings,
+                },
+            },
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+/**
+ * PATCH /api/collectors/profile
+ * Update collector profile/settings fields
+ */
+router.patch('/profile', authenticateToken, requireUserType('collector'), async (req, res, next) => {
+    try {
+        const { error: validationError, value } = updateProfileSchema.validate(req.body || {});
+        if (validationError) {
+            return res.status(400).json({
+                success: false,
+                message: validationError.details[0].message,
+            });
+        }
+
+        const updateData = {
+            updated_at: new Date().toISOString(),
+        };
+
+        if (Object.prototype.hasOwnProperty.call(value, 'full_name')) {
+            updateData.full_name = value.full_name;
+        }
+        if (Object.prototype.hasOwnProperty.call(value, 'area')) {
+            updateData.area = value.area;
+        }
+        if (Object.prototype.hasOwnProperty.call(value, 'is_active')) {
+            updateData.is_active = value.is_active;
+        }
+
+        const { data: updatedUser, error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', req.user.id)
+            .select('id, username, full_name, phone_number, area, is_active, updated_at')
+            .single();
+
+        if (error) throw error;
+
+        return res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: { profile: updatedUser },
+        });
+    } catch (error) {
+        return next(error);
     }
 });
 

@@ -78,33 +78,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
           Expanded(
-            child: notificationsProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : notificationsProvider.error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+            child: RefreshIndicator(
+              onRefresh: () => notificationsProvider.fetchNotifications(),
+              child: notificationsProvider.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : notificationsProvider.error != null
+                      ? ListView(
                           children: [
+                            const SizedBox(height: 120),
                             const Icon(Icons.error_outline, size: 64, color: Colors.red),
                             const SizedBox(height: 12),
                             Text(notificationsProvider.error!, textAlign: TextAlign.center),
                             const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: () => notificationsProvider.fetchNotifications(),
-                              child: const Text('Retry'),
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () => notificationsProvider.fetchNotifications(),
+                                child: const Text('Retry'),
+                              ),
                             ),
                           ],
-                        ),
-                      )
-                    : visible.isEmpty
-                ? _emptyState()
-                : ListView(
-                    children: [
-                      _group('Today', visible),
-                      _group('Yesterday', visible),
-                      _group('Earlier', visible),
-                    ],
-                  ),
+                        )
+                      : visible.isEmpty
+                  ? ListView(children: [_emptyState()])
+                  : ListView(
+                      children: [
+                        _group('Today', visible),
+                        _group('Yesterday', visible),
+                        _group('Earlier', visible),
+                      ],
+                    ),
+            ),
           ),
         ],
       ),
@@ -131,14 +134,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       confirmDismiss: (direction) async {
         setState(() {
-          if (direction == DismissDirection.startToEnd) {
-            item['is_read'] = true;
-          } else {
-            item['is_read'] = true;
-          }
+          item['is_read'] = true;
         });
 
-        if (direction == DismissDirection.startToEnd && id != null) {
+        if (id != null) {
           await Provider.of<NotificationProvider>(context, listen: false).markAsRead(id);
         }
 

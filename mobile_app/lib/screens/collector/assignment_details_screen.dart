@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/collector_provider.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
@@ -129,6 +130,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
               const SizedBox(height: 12),
               _buildRow('Distance', '${assignment['distanceKm'] ?? 0} km'),
               _buildRow('ETA', '${assignment['etaMinutes'] ?? 0} mins'),
+              _buildRow('Coordinates', '${assignment['latitude'] ?? '-'}, ${assignment['longitude'] ?? '-'}'),
             ],
           ),
           const SizedBox(height: 12),
@@ -151,9 +153,16 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Directions integration pending')),
-                  );
+                  final lat = _asDouble(assignment['latitude']);
+                  final lng = _asDouble(assignment['longitude']);
+                  if (lat == null || lng == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Location unavailable for this assignment')),
+                    );
+                    return;
+                  }
+
+                  _openMaps(lat, lng);
                 },
                 icon: const Icon(Icons.directions),
                 label: const Text('Directions'),
@@ -163,11 +172,23 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
+                  if (status == 'in_progress') {
+                    Navigator.pushNamed(
+                      context,
+                      '/qr-scanner',
+                      arguments: {
+                        'reportId': assignment['id']?.toString(),
+                        'fromAssignment': true,
+                      },
+                    );
+                    return;
+                  }
+
                   final action = status == 'assigned' ? 'start' : 'complete';
                   _confirmAction(context, action, assignment['id'].toString());
                 },
-                icon: const Icon(Icons.check),
-                label: Text(status == 'assigned' ? 'Start Collection' : 'Mark Complete'),
+                icon: Icon(status == 'in_progress' ? Icons.qr_code_scanner : Icons.check),
+                label: Text(status == 'assigned' ? 'Start Collection' : 'Scan QR to Complete'),
               ),
             ),
           ],
@@ -252,6 +273,25 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
     return value?.toString() ?? '-';
   }
 
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  Future<void> _openMaps(double lat, double lng) async {
+    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Coordinates: $lat, $lng')),
+      );
+    }
+  }
+
   void _confirmAction(BuildContext context, String action, String reportId) {
     showDialog(
       context: context,
@@ -320,6 +360,8 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
       'garbageType': assignment['garbage_type'] ?? 'mixed',
       'distanceKm': args?['distanceKm'] ?? 0,
       'etaMinutes': args?['etaMinutes'] ?? 0,
+      'latitude': assignment['latitude'] ?? args?['latitude'],
+      'longitude': assignment['longitude'] ?? args?['longitude'],
     };
   }
 }

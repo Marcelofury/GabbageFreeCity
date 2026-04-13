@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 
 class CollectorProfileScreen extends StatefulWidget {
   const CollectorProfileScreen({super.key});
@@ -10,23 +11,123 @@ class CollectorProfileScreen extends StatefulWidget {
 }
 
 class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
+  final ApiService _apiService = ApiService();
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _areaController = TextEditingController();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String? _error;
   bool _available = true;
-  bool _autoAccept = false;
-  bool _pushNotifications = true;
-  bool _smsFallback = true;
-  bool _appLock = false;
-  double _radius = 5;
+  Map<String, dynamic> _stats = {
+    'assigned_count': 0,
+    'in_progress_count': 0,
+    'completed_count': 0,
+    'total_earnings': 0,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _areaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final response = await _apiService.getCollectorProfile();
+    if (!mounted) return;
+
+    if (response['success'] == true) {
+      final profile = Map<String, dynamic>.from(response['data']?['profile'] ?? {});
+      final stats = Map<String, dynamic>.from(response['data']?['stats'] ?? {});
+
+      _fullNameController.text = profile['full_name']?.toString() ?? '';
+      _areaController.text = profile['area']?.toString() ?? '';
+
+      setState(() {
+        _available = profile['is_active'] == true;
+        _stats = {
+          'assigned_count': stats['assigned_count'] ?? 0,
+          'in_progress_count': stats['in_progress_count'] ?? 0,
+          'completed_count': stats['completed_count'] ?? 0,
+          'total_earnings': stats['total_earnings'] ?? 0,
+        };
+        _isLoading = false;
+      });
+
+      return;
+    }
+
+    setState(() {
+      _error = response['message']?.toString() ?? 'Failed to load profile';
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+
+    final response = await _apiService.updateCollectorProfile(
+      fullName: _fullNameController.text.trim(),
+      area: _areaController.text.trim(),
+      isActive: _available,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSaving = false;
+    });
+
+    if (response['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile settings saved')), 
+      );
+      await _loadProfile();
+      return;
+    }
+
+    setState(() {
+      _error = response['message']?.toString() ?? 'Failed to save profile';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user;
 
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile & Settings')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -54,9 +155,13 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                       ],
                     ),
                   ),
-                  const Chip(
-                    label: Text('Verified'),
-                    avatar: Icon(Icons.verified, color: Colors.green, size: 18),
+                  Chip(
+                    label: Text(_available ? 'Active' : 'Inactive'),
+                    avatar: Icon(
+                      _available ? Icons.check_circle : Icons.pause_circle,
+                      color: _available ? Colors.green : Colors.orange,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
@@ -67,59 +172,47 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: const [
-                  _StatItem(label: 'Jobs', value: '42'),
-                  _StatItem(label: 'Rating', value: '4.8'),
-                  _StatItem(label: 'Week UGX', value: '95K'),
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _StatItem(label: 'Assigned', value: '${_stats['assigned_count'] ?? 0}'),
+                  _StatItem(label: 'In Progress', value: '${_stats['in_progress_count'] ?? 0}'),
+                  _StatItem(label: 'Completed', value: '${_stats['completed_count'] ?? 0}'),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: const Text('Total Earnings'),
+              subtitle: Text('UGX ${_stats['total_earnings'] ?? 0}'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _sectionTitle('Profile'),
+          TextField(
+            controller: _fullNameController,
+            decoration: const InputDecoration(
+              labelText: 'Full Name',
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _areaController,
+            decoration: const InputDecoration(
+              labelText: 'Area',
+              prefixIcon: Icon(Icons.location_city_outlined),
+            ),
+          ),
+          const SizedBox(height: 8),
           _sectionTitle('Operations'),
           SwitchListTile(
             value: _available,
             title: const Text('Availability'),
             subtitle: const Text('Receive assignments while active'),
             onChanged: (v) => setState(() => _available = v),
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: const Text('Preferred Radius'),
-            subtitle: Text('${_radius.toStringAsFixed(0)} km'),
-          ),
-          Slider(
-            value: _radius,
-            min: 1,
-            max: 20,
-            divisions: 19,
-            label: '${_radius.toStringAsFixed(0)} km',
-            onChanged: (v) => setState(() => _radius = v),
-          ),
-          SwitchListTile(
-            value: _autoAccept,
-            title: const Text('Auto-accept assignments'),
-            onChanged: (v) => setState(() => _autoAccept = v),
-          ),
-          const SizedBox(height: 8),
-          _sectionTitle('Notifications'),
-          SwitchListTile(
-            value: _pushNotifications,
-            title: const Text('Push Notifications'),
-            onChanged: (v) => setState(() => _pushNotifications = v),
-          ),
-          SwitchListTile(
-            value: _smsFallback,
-            title: const Text('SMS Fallback'),
-            onChanged: (v) => setState(() => _smsFallback = v),
-          ),
-          const SizedBox(height: 8),
-          _sectionTitle('Privacy & Security'),
-          SwitchListTile(
-            value: _appLock,
-            title: const Text('App Lock'),
-            onChanged: (v) => setState(() => _appLock = v),
           ),
           const SizedBox(height: 8),
           _sectionTitle('Support'),
@@ -160,12 +253,14 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(16),
         child: ElevatedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Settings saved locally (API pending)')),
-            );
-          },
-          child: const Text('Save Settings'),
+          onPressed: _isSaving ? null : _saveProfile,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Save Settings'),
         ),
       ),
     );

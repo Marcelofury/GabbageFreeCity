@@ -12,6 +12,11 @@ class MyAssignmentsScreen extends StatefulWidget {
 }
 
 class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +34,9 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<CollectorProvider>(context);
     final assignments = provider.assignments;
+    final assignedCount = assignments.where((a) => (a['status'] ?? '') == 'assigned').length;
+    final inProgressCount = assignments.where((a) => (a['status'] ?? '') == 'in_progress').length;
+    final totalCount = assignments.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -86,9 +94,9 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStat('Active', '1', Colors.orange),
-                        _buildStat('In Progress', '1', Colors.blue),
-                        _buildStat('Completed', '0', Colors.green),
+                        _buildStat('Assigned', '$assignedCount', Colors.orange),
+                        _buildStat('In Progress', '$inProgressCount', Colors.blue),
+                        _buildStat('Total', '$totalCount', Colors.green),
                       ],
                     ),
                   ),
@@ -166,12 +174,14 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                                 'status': status,
                                 'amount': amount,
                                 'address': address,
-                                'landmark': 'Nearby landmark',
+                                'landmark': assignment['resident']?['area'] ?? 'Area not provided',
                                 'reportedAt': assignedAt,
                                 'volume': volume,
                                 'garbageType': assignment['garbage_type'] ?? 'mixed',
-                                'distanceKm': 2.5,
-                                'etaMinutes': 15,
+                                'distanceKm': assignment['distance_km'] ?? 0,
+                                'etaMinutes': assignment['eta_minutes'] ?? 0,
+                                'latitude': _asDouble(assignment['latitude']),
+                                'longitude': _asDouble(assignment['longitude']),
                               },
                             );
                           },
@@ -183,7 +193,15 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
-                                    _showDirections(context);
+                                    final lat = _asDouble(assignment['latitude']);
+                                    final lng = _asDouble(assignment['longitude']);
+                                    if (lat != null && lng != null) {
+                                      _showDirections(context, lat: lat, lng: lng);
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Assignment location is unavailable')),
+                                      );
+                                    }
                                   },
                                   icon: const Icon(Icons.directions, size: 18),
                                   label: const Text('Directions'),
@@ -193,9 +211,21 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () {
+                                    if (status == 'in_progress') {
+                                      Navigator.pushNamed(
+                                        context,
+                                        '/qr-scanner',
+                                        arguments: {
+                                          'reportId': assignment['id']?.toString(),
+                                          'fromAssignment': true,
+                                        },
+                                      );
+                                      return;
+                                    }
+
                                     _updateStatus(context, assignment['id'].toString(), status);
                                   },
-                                  icon: const Icon(Icons.check, size: 18),
+                                  icon: Icon(status == 'in_progress' ? Icons.qr_code_scanner : Icons.check, size: 18),
                                   label: Text(
                                     _getActionText(status),
                                   ),
@@ -278,16 +308,13 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
       case 'assigned':
         return 'Start Collection';
       case 'in_progress':
-        return 'Mark Complete';
+        return 'Scan QR to Complete';
       default:
         return 'View';
     }
   }
 
-  void _showDirections(BuildContext context) async {
-    // Mock coordinates - in real app, get from assignment
-    const lat = 0.3476;
-    const lng = 32.6169;
+  void _showDirections(BuildContext context, {required double lat, required double lng}) async {
     
     // Use OpenStreetMap for directions
     final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
@@ -304,7 +331,7 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                 label: 'Coordinates',
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text('Location: $lat, $lng'),
                       duration: Duration(seconds: 3),
                     ),
@@ -319,7 +346,7 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Directions to: $lat, $lng'),
+              content: Text('Directions to: $lat, $lng'),
             action: SnackBarAction(
               label: 'OK',
               onPressed: () {},

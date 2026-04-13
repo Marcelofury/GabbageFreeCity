@@ -15,6 +15,7 @@ class NearbyReportsScreen extends StatefulWidget {
 
 class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
   final MapController _mapController = MapController();
+  final Distance _distance = const Distance();
   bool _isLoading = false;
 
   @override
@@ -133,9 +134,13 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   ),
                 // Show nearby reports
                 MarkerLayer(
-                  markers: nearbyReports.map((report) {
-                    final lat = (report['latitude'] ?? 0.3476).toDouble();
-                    final lng = (report['longitude'] ?? 32.6169).toDouble();
+                  markers: nearbyReports.where((report) {
+                    final lat = _asDouble(report['latitude']);
+                    final lng = _asDouble(report['longitude']);
+                    return lat != null && lng != null;
+                  }).map((report) {
+                    final lat = _asDouble(report['latitude'])!;
+                    final lng = _asDouble(report['longitude'])!;
                     return Marker(
                       point: LatLng(lat, lng),
                       width: 80,
@@ -190,7 +195,37 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     // Clear any selected markers
   }
 
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  String _distanceLabel(Map<String, dynamic> report, LocationProvider locationProvider) {
+    final userPos = locationProvider.currentPosition;
+    final lat = _asDouble(report['latitude']);
+    final lng = _asDouble(report['longitude']);
+
+    if (userPos == null || lat == null || lng == null) {
+      return 'Distance unavailable';
+    }
+
+    final meters = _distance(
+      LatLng(userPos.latitude, userPos.longitude),
+      LatLng(lat, lng),
+    );
+
+    if (meters < 1000) {
+      return '${meters.toStringAsFixed(0)} m';
+    }
+
+    return '${(meters / 1000).toStringAsFixed(2)} km';
+  }
+
   void _showReportDetails(Map<String, dynamic> report) {
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final lat = _asDouble(report['latitude']);
+    final lng = _asDouble(report['longitude']);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -264,8 +299,8 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                         style: TextStyle(color: Colors.grey[600]),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const Text(
-                        '~2.5 km',
+                      Text(
+                        _distanceLabel(report, locationProvider),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -289,13 +324,13 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                       'status': 'assigned',
                       'lastUpdated': DateTime.now(),
                       'address': report['address_description'] ?? report['address'],
-                      'latitude': report['latitude'] ?? 0.3476,
-                      'longitude': report['longitude'] ?? 32.6169,
-                      'garbageType': 'mixed',
+                      'latitude': lat,
+                      'longitude': lng,
+                      'garbageType': report['garbage_type'] ?? 'mixed',
                       'volume': report['estimated_volume'] ?? report['volume'] ?? 'medium',
                       'amount': report['payment_amount'] ?? report['amount'] ?? 0,
-                      'paymentStatus': 'paid',
-                      'txRef': 'AUTO',
+                      'paymentStatus': report['payment_status'] ?? 'pending',
+                      'txRef': report['transaction_ref'] ?? '-',
                       'collectorName': 'Unassigned',
                       'eta': '~15 min',
                     },
@@ -312,10 +347,13 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      _openMaps(
-                        (report['latitude'] ?? 0.3476).toDouble(),
-                        (report['longitude'] ?? 32.6169).toDouble(),
-                      );
+                      if (lat != null && lng != null) {
+                        _openMaps(lat, lng);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Location unavailable for this report')),
+                        );
+                      }
                     },
                     icon: const Icon(Icons.directions, size: 18),
                     label: const Text(

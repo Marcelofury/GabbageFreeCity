@@ -21,6 +21,18 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
 
   bool _isProcessing = false;
   bool _isTorchOn = false;
+  bool _initialized = false;
+  String? _expectedReportId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    _expectedReportId = args?['reportId']?.toString();
+  }
 
   @override
   void dispose() {
@@ -104,19 +116,14 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
                 ),
                 const SizedBox(height: 12),
                 _buildInfoTile(
-                  Icons.receipt_long,
-                  'Payment Receipts',
-                  'Verify completed payments',
+                  Icons.qr_code,
+                  'Resident Report QR',
+                  'Must include report_id for final completion',
                 ),
                 _buildInfoTile(
                   Icons.assignment,
-                  'Report Codes',
-                  'Quick access to report details',
-                ),
-                _buildInfoTile(
-                  Icons.location_on,
-                  'Location Markers',
-                  'Navigate to collection points',
+                  'Assignment Match Required',
+                  'QR report_id must match current assignment',
                 ),
               ],
             ),
@@ -162,17 +169,29 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     await _scannerController.stop();
 
     String? reportId;
+    Map<String, dynamic>? parsedPayload;
     try {
       final decoded = jsonDecode(rawCode);
       if (decoded is Map<String, dynamic>) {
+        parsedPayload = decoded;
         reportId = decoded['report_id']?.toString();
       }
     } catch (_) {
-      reportId = rawCode.trim();
+      reportId = null;
     }
 
     if (reportId == null || reportId.isEmpty) {
-      _showFailure('Invalid QR content. Could not find report_id.');
+      _showFailure('Invalid QR content. Scan a resident report QR with report_id.');
+      return;
+    }
+
+    if (parsedPayload?['app'] != null && parsedPayload?['app'] != 'GFC') {
+      _showFailure('Unsupported QR source. Please scan a GFC resident report QR.');
+      return;
+    }
+
+    if (_expectedReportId != null && _expectedReportId != reportId) {
+      _showFailure('Scanned QR does not match the selected assignment report.');
       return;
     }
 
