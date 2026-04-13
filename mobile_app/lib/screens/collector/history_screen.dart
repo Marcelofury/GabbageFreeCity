@@ -1,215 +1,244 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-class HistoryScreen extends StatelessWidget {
+import '../../providers/collector_provider.dart';
+
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadHistory();
+    });
+  }
+
+  Future<void> _loadHistory() async {
+    final provider = Provider.of<CollectorProvider>(context, listen: false);
+    await provider.fetchCollectionHistory();
+  }
+
+  Future<void> _changePeriod(String period) async {
+    final provider = Provider.of<CollectorProvider>(context, listen: false);
+    await provider.setHistoryPeriod(period);
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  DateTime? _asDate(dynamic value) {
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value?.toString() ?? '');
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Mock completed collections
-    final completedCollections = [
-      {
-        'id': '001',
-        'address': 'Nakawa Market Area',
-        'completedAt': DateTime.now().subtract(const Duration(days: 1)),
-        'amount': 5000,
-        'volume': 'medium',
-        'rating': 5,
-      },
-      {
-        'id': '002',
-        'address': 'Ntinda Shopping Center',
-        'completedAt': DateTime.now().subtract(const Duration(days: 3)),
-        'amount': 3000,
-        'volume': 'small',
-        'rating': 4,
-      },
-      {
-        'id': '003',
-        'address': 'Bukoto Street',
-        'completedAt': DateTime.now().subtract(const Duration(days: 5)),
-        'amount': 10000,
-        'volume': 'large',
-        'rating': 5,
-      },
-      {
-        'id': '004',
-        'address': 'Kamwokya Shopping Area',
-        'completedAt': DateTime.now().subtract(const Duration(days: 7)),
-        'amount': 5000,
-        'volume': 'medium',
-        'rating': 5,
-      },
-    ];
+    final provider = Provider.of<CollectorProvider>(context);
+    final history = provider.collectionHistory;
+    final totalEarnings = history.fold<int>(
+      0,
+      (sum, item) => sum + _asInt(item['payment_amount']),
+    );
+    final totalSacks = history.fold<int>(
+      0,
+      (sum, item) => sum + _asInt(item['sack_count']),
+    );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Collection History'),
       ),
-      body: Column(
-        children: [
-          // Stats Card
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green.shade400, Colors.green.shade600],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatColumn(
-                    'Total\nCollections',
-                    '${completedCollections.length}',
-                    Icons.check_circle,
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : provider.error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 12),
+                      Text(provider.error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadHistory,
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                ),
-                Container(
-                  width: 1,
-                  height: 50,
-                  color: Colors.white.withOpacity(0.3),
-                ),
-                Expanded(
-                  child: _buildStatColumn(
-                    'Total\nEarnings',
-                    'UGX ${_calculateTotal(completedCollections)}',
-                    Icons.monetization_on,
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 50,
-                  color: Colors.white.withOpacity(0.3),
-                ),
-                Expanded(
-                  child: _buildStatColumn(
-                    'Avg\nRating',
-                    '${_calculateAvgRating(completedCollections).toStringAsFixed(1)} ⭐',
-                    Icons.star,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Filter chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Text('Filter: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('This Week'),
-                  selected: true,
-                  onSelected: (_) {},
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('This Month'),
-                  selected: false,
-                  onSelected: (_) {},
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('All Time'),
-                  selected: false,
-                  onSelected: (_) {},
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // History list
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: completedCollections.length,
-              itemBuilder: (context, index) {
-                final collection = completedCollections[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green.shade100,
-                      child: const Icon(Icons.check, color: Colors.green),
-                    ),
-                    title: Text(
-                      collection['address'] as String,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat.yMMMd().add_jm().format(
-                            collection['completedAt'] as DateTime,
+                )
+              : Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.green.shade400, Colors.green.shade600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
                           ),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                'Volume: ${collection['volume']}',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            ...List.generate(
-                              collection['rating'] as int,
-                              (i) => const Icon(Icons.star, size: 14, color: Colors.orange),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    trailing: SizedBox(
-                      width: 80,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        ],
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'UGX ${collection['amount']}',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.green,
+                          Expanded(
+                            child: _buildStatColumn(
+                              'Collections',
+                              '${history.length}',
+                              Icons.check_circle,
                             ),
                           ),
-                          Text(
-                            'ID: ${collection['id']}',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                          Container(
+                            width: 1,
+                            height: 50,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          Expanded(
+                            child: _buildStatColumn(
+                              'Earnings',
+                              'UGX $totalEarnings',
+                              Icons.monetization_on,
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 50,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          Expanded(
+                            child: _buildStatColumn(
+                              'Sacks',
+                              '$totalSacks',
+                              Icons.inventory_2,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    onTap: () => _showCollectionDetails(context, collection),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Text('Filter: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('This Week'),
+                            selected: provider.historyPeriod == 'week',
+                            onSelected: (_) => _changePeriod('week'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('This Month'),
+                            selected: provider.historyPeriod == 'month',
+                            onSelected: (_) => _changePeriod('month'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('All Time'),
+                            selected: provider.historyPeriod == 'all',
+                            onSelected: (_) => _changePeriod('all'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: history.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.history_toggle_off, size: 56, color: Colors.grey[400]),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'No completed collections for this filter',
+                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _loadHistory,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: history.length,
+                                itemBuilder: (context, index) {
+                                  final item = history[index];
+                                  final address = (item['address_description'] ?? 'Unknown location').toString();
+                                  final completedAt = _asDate(item['completed_at']);
+                                  final sacks = _asInt(item['sack_count']);
+                                  final amount = _asInt(item['payment_amount']);
+                                  final residentArea = (item['resident']?['area'] ?? 'Area not provided').toString();
+
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Colors.green.shade100,
+                                        child: const Icon(Icons.check, color: Colors.green),
+                                      ),
+                                      title: Text(
+                                        address,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            completedAt != null
+                                                ? DateFormat.yMMMd().add_jm().format(completedAt)
+                                                : 'Completion date unavailable',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text('Sacks: $sacks | Area: $residentArea'),
+                                        ],
+                                      ),
+                                      trailing: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'UGX $amount',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                          Text(
+                                            'ID: ${item['id']}',
+                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                          ),
+                                        ],
+                                      ),
+                                      onTap: () => _showCollectionDetails(context, item),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
     );
   }
 
@@ -221,8 +250,8 @@ class HistoryScreen extends StatelessWidget {
         Text(
           value,
           textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
           maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -233,37 +262,18 @@ class HistoryScreen extends StatelessWidget {
         Text(
           label,
           textAlign: TextAlign.center,
-          overflow: TextOverflow.visible,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 11,
-          ),
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
         ),
       ],
     );
   }
 
-  String _calculateTotal(List<Map<String, dynamic>> collections) {
-    final total = collections.fold<int>(
-      0,
-      (sum, item) => sum + (item['amount'] as int),
-    );
-    return total.toString();
-  }
+  void _showCollectionDetails(BuildContext context, Map<String, dynamic> item) {
+    final completedAt = _asDate(item['completed_at']);
 
-  double _calculateAvgRating(List<Map<String, dynamic>> collections) {
-    if (collections.isEmpty) return 0;
-    final total = collections.fold<int>(
-      0,
-      (sum, item) => sum + (item['rating'] as int),
-    );
-    return total / collections.length;
-  }
-
-  void _showCollectionDetails(BuildContext context, Map<String, dynamic> collection) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
+      builder: (context) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -274,39 +284,24 @@ class HistoryScreen extends StatelessWidget {
                 const Icon(Icons.check_circle, color: Colors.green, size: 32),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        collection['address'] as String,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Collection ID: ${collection['id']}',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
+                  child: Text(
+                    (item['address_description'] ?? 'Unknown location').toString(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            _buildDetailRow('Volume', collection['volume'] as String),
-            _buildDetailRow('Amount', 'UGX ${collection['amount']}'),
+            const SizedBox(height: 16),
+            _buildDetailRow('Report ID', '${item['id']}'),
+            _buildDetailRow('Sacks', '${_asInt(item['sack_count'])}'),
+            _buildDetailRow('Amount', 'UGX ${_asInt(item['payment_amount'])}'),
             _buildDetailRow(
               'Completed',
-              DateFormat.yMMMd().add_jm().format(
-                collection['completedAt'] as DateTime,
-              ),
+              completedAt != null
+                  ? DateFormat.yMMMd().add_jm().format(completedAt)
+                  : 'Unavailable',
             ),
-            _buildDetailRow(
-              'Rating',
-              '${collection['rating']} stars',
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -327,14 +322,8 @@ class HistoryScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
+          Text(label, style: TextStyle(color: Colors.grey[600])),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );

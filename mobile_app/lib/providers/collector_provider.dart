@@ -8,11 +8,15 @@ class CollectorProvider with ChangeNotifier {
 
   List<Map<String, dynamic>> _nearbyReports = [];
   List<Map<String, dynamic>> _assignments = [];
+  List<Map<String, dynamic>> _collectionHistory = [];
+  String _historyPeriod = 'week';
   bool _isLoading = false;
   String? _error;
 
   List<Map<String, dynamic>> get nearbyReports => _nearbyReports;
   List<Map<String, dynamic>> get assignments => _assignments;
+  List<Map<String, dynamic>> get collectionHistory => _collectionHistory;
+  String get historyPeriod => _historyPeriod;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -136,5 +140,43 @@ class CollectorProvider with ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> fetchCollectionHistory({String? period}) async {
+    _isLoading = true;
+    _error = null;
+    if (period != null) {
+      _historyPeriod = period;
+    }
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getCollectionHistory(
+        period: _historyPeriod,
+      );
+
+      if (response['success'] == true) {
+        final reports = (response['data']?['reports'] as List?) ?? [];
+        _collectionHistory = reports
+            .whereType<Map<String, dynamic>>()
+            .map(Map<String, dynamic>.from)
+            .toList();
+      } else {
+        _error = response['message']?.toString() ?? 'Failed to load collection history';
+      }
+    } catch (e) {
+      _error = e.toString();
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> setHistoryPeriod(String period) async {
+    if (period == _historyPeriod) {
+      return;
+    }
+
+    await fetchCollectionHistory(period: period);
   }
 }

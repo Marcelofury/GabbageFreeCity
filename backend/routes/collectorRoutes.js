@@ -134,6 +134,68 @@ router.get('/my-assignments', authenticateToken, requireUserType('collector'), a
 });
 
 /**
+ * GET /api/collectors/collection-history
+ * Get collector completed collection history with filters
+ */
+router.get('/collection-history', authenticateToken, requireUserType('collector'), async (req, res, next) => {
+    try {
+        const period = String(req.query.period || 'week').toLowerCase();
+        const validPeriods = ['week', 'month', 'all'];
+
+        if (!validPeriods.includes(period)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid period filter. Use week, month, or all.',
+            });
+        }
+
+        let query = supabase
+            .from('garbage_reports')
+            .select(`
+                id,
+                address_description,
+                sack_count,
+                estimated_volume,
+                payment_amount,
+                completed_at,
+                resident:users!garbage_reports_resident_id_fkey (
+                    full_name,
+                    phone_number,
+                    area
+                )
+            `)
+            .eq('assigned_collector_id', req.user.id)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false });
+
+        if (period === 'week') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            query = query.gte('completed_at', weekAgo.toISOString());
+        } else if (period === 'month') {
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            query = query.gte('completed_at', monthAgo.toISOString());
+        }
+
+        const { data: reports, error } = await query;
+        if (error) {
+            throw error;
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                period,
+                reports: reports || [],
+            },
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+/**
  * POST /api/collectors/verify-collection
  * Verify collection with QR code scan
  */

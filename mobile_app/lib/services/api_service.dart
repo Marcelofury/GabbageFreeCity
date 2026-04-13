@@ -316,6 +316,34 @@ class ApiService {
     }
   }
 
+  /// Get collector completed collection history
+  Future<Map<String, dynamic>> getCollectionHistory({
+    String period = 'week',
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$BASE_URL/collectors/collection-history?period=$period'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+
+      return {
+        'success': false,
+        'message': 'Failed to fetch collection history: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Update collector location
   Future<Map<String, dynamic>> updateCollectorLocation({
     required double latitude,
