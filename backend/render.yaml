@@ -37,7 +37,7 @@ services:
       - key: EGO_SMS_SENDER_ID
         value: KCCA-GFC
       - key: EGO_SMS_USE_SANDBOX
-        value: true
+        value: false
       - key: EGO_SMS_TEST_NUMBERS
         value: +256783858472,+256785510666
       - key: EGO_SMS_FORCE_TEST_MODE
