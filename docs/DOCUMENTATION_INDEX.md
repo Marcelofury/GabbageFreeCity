@@ -15,6 +15,7 @@ This index organizes project documents in teaching and implementation order.
 1. [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 2. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
 3. [MAMBO_SMS_SETUP.md](MAMBO_SMS_SETUP.md)
+4. [DEPENDENCY_REFERENCE.md](DEPENDENCY_REFERENCE.md)
 
 ## 4. Recommended Study Flow for Students
 1. Read planning and SRS to understand why the system exists.
