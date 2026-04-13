@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/collector_provider.dart';
 import '../../providers/location_provider.dart';
 
@@ -44,6 +43,10 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _focusMapOnReports(locationProvider, collectorProvider.nearbyReports);
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -135,12 +138,12 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                 // Show nearby reports
                 MarkerLayer(
                   markers: nearbyReports.where((report) {
-                    final lat = _asDouble(report['latitude']);
-                    final lng = _asDouble(report['longitude']);
+                    final lat = _reportLatitude(report);
+                    final lng = _reportLongitude(report);
                     return lat != null && lng != null;
                   }).map((report) {
-                    final lat = _asDouble(report['latitude'])!;
-                    final lng = _asDouble(report['longitude'])!;
+                    final lat = _reportLatitude(report)!;
+                    final lng = _reportLongitude(report)!;
                     return Marker(
                       point: LatLng(lat, lng),
                       width: 80,
@@ -200,10 +203,58 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  double? _reportLatitude(Map<String, dynamic> report) {
+    return _asDouble(report['latitude'] ?? report['lat']);
+  }
+
+  double? _reportLongitude(Map<String, dynamic> report) {
+    return _asDouble(report['longitude'] ?? report['lng']);
+  }
+
+  void _focusMapOnReports(
+    LocationProvider locationProvider,
+    List<Map<String, dynamic>> reports,
+  ) {
+    final points = <LatLng>[];
+
+    if (locationProvider.currentPosition != null) {
+      points.add(
+        LatLng(
+          locationProvider.currentPosition!.latitude,
+          locationProvider.currentPosition!.longitude,
+        ),
+      );
+    }
+
+    for (final report in reports) {
+      final lat = _reportLatitude(report);
+      final lng = _reportLongitude(report);
+      if (lat != null && lng != null) {
+        points.add(LatLng(lat, lng));
+      }
+    }
+
+    if (points.isEmpty) {
+      return;
+    }
+
+    if (points.length == 1) {
+      _mapController.move(points.first, 15);
+      return;
+    }
+
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(points),
+        padding: const EdgeInsets.all(40),
+      ),
+    );
+  }
+
   String _distanceLabel(Map<String, dynamic> report, LocationProvider locationProvider) {
     final userPos = locationProvider.currentPosition;
-    final lat = _asDouble(report['latitude']);
-    final lng = _asDouble(report['longitude']);
+    final lat = _reportLatitude(report);
+    final lng = _reportLongitude(report);
 
     if (userPos == null || lat == null || lng == null) {
       return 'Distance unavailable';
@@ -223,8 +274,8 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
 
   void _showReportDetails(Map<String, dynamic> report) {
     final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    final lat = _asDouble(report['latitude']);
-    final lng = _asDouble(report['longitude']);
+    final lat = _reportLatitude(report);
+    final lng = _reportLongitude(report);
 
     showModalBottomSheet(
       context: context,
@@ -348,7 +399,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                     onPressed: () {
                       Navigator.pop(context);
                       if (lat != null && lng != null) {
-                        _openMaps(lat, lng);
+                        _openInAppMap(lat, lng);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Location unavailable for this report')),
@@ -391,33 +442,52 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     );
   }
 
-  void _openMaps(double lat, double lng) async {
-    // Open in OpenStreetMap with directions
-    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
-    
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Opening map to: $lat, $lng'),
-              duration: const Duration(seconds: 2),
+  void _openInAppMap(double lat, double lng) {
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final userPosition = locationProvider.currentPosition;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Report Location')),
+          body: FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(lat, lng),
+              initialZoom: 15,
             ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Coordinates: $lat, $lng'),
-            duration: const Duration(seconds: 2),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.kcca.garbage_free_city',
+              ),
+              MarkerLayer(
+                markers: [
+                  if (userPosition != null)
+                    Marker(
+                      point: LatLng(userPosition.latitude, userPosition.longitude),
+                      width: 34,
+                      height: 34,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                  Marker(
+                    point: LatLng(lat, lng),
+                    width: 44,
+                    height: 44,
+                    child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      }
-    }
+        ),
+      ),
+    );
   }
 
   void _acceptAssignment(Map<String, dynamic> report) {

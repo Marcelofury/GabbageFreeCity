@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/garbage_report.dart';
 import '../../providers/report_provider.dart';
 
@@ -312,17 +313,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   }
 
   Future<void> _openInMap(double lat, double lng) async {
-    final uri = Uri.parse('https://www.openstreetmap.org/?mlat=$lat&mlon=$lng#map=18/$lat/$lng');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Map unavailable. Coordinates: $lat, $lng')),
-      );
-    }
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _ReportLocationMapScreen(latitude: lat, longitude: lng),
+      ),
+    );
   }
 
   void _showReceiptDialog(Map<String, dynamic> report) {
@@ -398,5 +394,44 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       'collectorName': report.assignedCollectorId != null ? 'Assigned Collector' : null,
       'eta': report.status == 'assigned' ? '~20 min' : null,
     };
+  }
+}
+
+class _ReportLocationMapScreen extends StatelessWidget {
+  const _ReportLocationMapScreen({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double latitude;
+  final double longitude;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Report Location')),
+      body: FlutterMap(
+        options: MapOptions(
+          initialCenter: LatLng(latitude, longitude),
+          initialZoom: 16,
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.kcca.garbage_free_city',
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(latitude, longitude),
+                width: 44,
+                height: 44,
+                child: const Icon(Icons.location_on, size: 40, color: Colors.red),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
