@@ -53,6 +53,20 @@ class CollectorProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateCollectorLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      await _apiService.updateCollectorLocation(
+        latitude: latitude,
+        longitude: longitude,
+      );
+    } catch (_) {
+      // Ignore location sync failures to keep nearby UX responsive.
+    }
+  }
+
   Future<bool> acceptAssignment(String reportId) async {
     _isLoading = true;
     _error = null;

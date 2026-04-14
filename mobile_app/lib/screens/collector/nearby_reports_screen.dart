@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../providers/collector_provider.dart';
 import '../../providers/location_provider.dart';
 
@@ -16,11 +18,21 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
   final MapController _mapController = MapController();
   final Distance _distance = const Distance();
   bool _isLoading = false;
+  StreamSubscription<Position>? _locationSubscription;
+  DateTime? _lastLiveRefreshAt;
+  Position? _lastLivePosition;
 
   @override
   void initState() {
     super.initState();
     _loadNearbyReports();
+    _startLiveLocationTracking();
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadNearbyReports() async {
@@ -35,9 +47,10 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     }
 
     if (locationProvider.currentPosition != null) {
-      await collectorProvider.fetchNearbyReports(
-        latitude: locationProvider.currentPosition!.latitude,
-        longitude: locationProvider.currentPosition!.longitude,
+      await _refreshNearbyFromPosition(
+        locationProvider.currentPosition!,
+        showSnackBar: false,
+        force: true,
       );
     }
 
@@ -48,6 +61,75 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
         _focusMapOnReports(locationProvider, collectorProvider.nearbyReports);
       });
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Found ${collectorProvider.nearbyReports.length} nearby reports'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _startLiveLocationTracking() {
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+
+    _locationSubscription = locationProvider.getLocationStream().listen((position) async {
+      if (!mounted) return;
+
+      locationProvider.setCurrentPosition(position);
+      await _refreshNearbyFromPosition(position, showSnackBar: false, autoFocus: false);
+    }, onError: (_) {
+      // Keep the screen functional even if stream updates fail intermittently.
+    });
+  }
+
+  Future<void> _refreshNearbyFromPosition(
+    Position position, {
+    required bool showSnackBar,
+    bool autoFocus = true,
+    bool force = false,
+  }) async {
+    final collectorProvider = Provider.of<CollectorProvider>(context, listen: false);
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+
+    final now = DateTime.now();
+    if (!force && _lastLiveRefreshAt != null && now.difference(_lastLiveRefreshAt!).inSeconds < 8) {
+      return;
+    }
+
+    if (!force && _lastLivePosition != null) {
+      final movedMeters = _distance(
+        LatLng(_lastLivePosition!.latitude, _lastLivePosition!.longitude),
+        LatLng(position.latitude, position.longitude),
+      );
+      if (movedMeters < 15) {
+        return;
+      }
+    }
+
+    _lastLiveRefreshAt = now;
+    _lastLivePosition = position;
+
+    await collectorProvider.updateCollectorLocation(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+
+    await collectorProvider.fetchNearbyReports(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+
+    if (!mounted) return;
+
+    if (autoFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _focusMapOnReports(locationProvider, collectorProvider.nearbyReports);
+      });
+    }
+
+    if (showSnackBar) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Found ${collectorProvider.nearbyReports.length} nearby reports'),

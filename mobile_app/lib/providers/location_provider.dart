@@ -95,4 +95,11 @@ class LocationProvider with ChangeNotifier {
       ),
     );
   }
+
+  /// Update current location from an active stream listener.
+  void setCurrentPosition(Position position) {
+    _currentPosition = position;
+    _error = null;
+    notifyListeners();
+  }
 }
