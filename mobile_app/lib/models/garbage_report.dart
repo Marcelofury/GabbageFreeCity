@@ -91,10 +91,27 @@ class GarbageReport {
 
   static String _parsePaymentStatus(Map<String, dynamic> json) {
     final payments = json['payments'];
-    if (payments is List && payments.isNotEmpty && payments.first is Map<String, dynamic>) {
-      final status = (payments.first['payment_status'] ?? '').toString();
-      if (status.isNotEmpty) {
-        return status;
+    if (payments is List && payments.isNotEmpty) {
+      final statuses = payments
+          .whereType<Map<String, dynamic>>()
+          .map((p) => (p['payment_status'] ?? '').toString().toLowerCase())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      if (statuses.any((s) => s == 'successful' || s == 'completed' || s == 'paid')) {
+        return 'successful';
+      }
+
+      if (statuses.any((s) => s == 'processing')) {
+        return 'processing';
+      }
+
+      if (statuses.any((s) => s == 'pending')) {
+        return 'pending';
+      }
+
+      if (statuses.any((s) => s == 'failed' || s == 'cancelled')) {
+        return 'failed';
       }
     }
 
@@ -108,8 +125,29 @@ class GarbageReport {
 
   static String? _parseTransactionRef(Map<String, dynamic> json) {
     final payments = json['payments'];
-    if (payments is List && payments.isNotEmpty && payments.first is Map<String, dynamic>) {
-      return payments.first['transaction_id']?.toString();
+    if (payments is List && payments.isNotEmpty) {
+      final rows = payments.whereType<Map<String, dynamic>>().toList();
+
+      final successful = rows.firstWhere(
+        (p) {
+          final status = (p['payment_status'] ?? '').toString().toLowerCase();
+          return status == 'successful' || status == 'completed' || status == 'paid';
+        },
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (successful.isNotEmpty) {
+        return successful['transaction_id']?.toString();
+      }
+
+      final withTx = rows.firstWhere(
+        (p) => (p['transaction_id'] ?? '').toString().isNotEmpty,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (withTx.isNotEmpty) {
+        return withTx['transaction_id']?.toString();
+      }
     }
 
     return null;
