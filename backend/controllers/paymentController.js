@@ -20,7 +20,7 @@ const validatePhoneSchema = Joi.object({
 function mapMarzPayStatus(status) {
     const normalized = String(status || '').toLowerCase();
 
-    if (['successful', 'completed'].includes(normalized)) {
+    if (['successful', 'completed', 'success', 'succeeded', 'paid'].includes(normalized)) {
         return 'completed';
     }
 
