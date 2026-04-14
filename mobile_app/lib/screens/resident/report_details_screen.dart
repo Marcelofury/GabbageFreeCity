@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
 import '../../models/garbage_report.dart';
 import '../../providers/report_provider.dart';
 
@@ -64,6 +66,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
     final status = report['status']?.toString() ?? 'pending';
     final paymentStatus = report['paymentStatus']?.toString() ?? 'unpaid';
+    final canShowCollectionQr = paymentStatus == 'paid' &&
+      (status == 'assigned' || status == 'in_progress');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
@@ -164,6 +168,21 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             _timeline('Collection in progress', status == 'in_progress' || status == 'completed'),
             _timeline('Collection completed', status == 'completed'),
           ]),
+          if (canShowCollectionQr) ...[
+            const SizedBox(height: 12),
+            _section('Collection QR', Icons.qr_code, [
+              const Text('Show this QR to the assigned collector for final scan and completion.'),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showCollectionQr(report),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Show QR for Collector'),
+                ),
+              ),
+            ]),
+          ],
           const SizedBox(height: 80),
         ],
       ),
@@ -363,6 +382,61 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               }
             },
             child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCollectionQr(Map<String, dynamic> report) {
+    final payload = {
+      'app': 'GFC',
+      'report_id': report['id']?.toString(),
+      'payment_status': report['paymentStatus']?.toString() ?? 'unknown',
+      'generated_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    final rawPayload = jsonEncode(payload);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Collector Scan QR'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(
+              data: rawPayload,
+              version: QrVersions.auto,
+              size: 220,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Report ID: ${report['id']}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Collector should scan this after starting collection.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: rawPayload));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('QR payload copied to clipboard')),
+                );
+              }
+            },
+            child: const Text('Copy Payload'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
