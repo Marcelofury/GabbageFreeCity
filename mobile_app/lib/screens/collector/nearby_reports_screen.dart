@@ -29,6 +29,60 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     _startLiveLocationTracking();
   }
 
+  String _reportStatus(Map<String, dynamic> report) {
+    return (report['status'] ?? '').toString().toLowerCase().trim();
+  }
+
+  String _paymentStatus(Map<String, dynamic> report) {
+    return (report['payment_status'] ?? '').toString().toLowerCase().trim();
+  }
+
+  Color _reportMarkerColor(Map<String, dynamic> report) {
+    final status = _reportStatus(report);
+    final paymentStatus = _paymentStatus(report);
+
+    if (status == 'completed') {
+      return Colors.green.shade700;
+    }
+
+    if (status == 'in_progress') {
+      return Colors.blue.shade700;
+    }
+
+    if (status == 'assigned') {
+      return Colors.deepPurple.shade400;
+    }
+
+    if (paymentStatus == 'successful' || paymentStatus == 'completed' || paymentStatus == 'paid') {
+      return Colors.teal.shade600;
+    }
+
+    if (paymentStatus == 'pending' || paymentStatus == 'initiated' || paymentStatus == 'processing') {
+      return Colors.orange;
+    }
+
+    if (paymentStatus == 'failed' || paymentStatus == 'declined' || paymentStatus == 'rejected') {
+      return Colors.red.shade600;
+    }
+
+    return Colors.orange;
+  }
+
+  String _markerTag(Map<String, dynamic> report) {
+    final status = _reportStatus(report);
+    final paymentStatus = _paymentStatus(report);
+
+    if (status.isNotEmpty && status != 'pending') {
+      return status.replaceAll('_', ' ').toUpperCase();
+    }
+
+    if (paymentStatus.isNotEmpty) {
+      return paymentStatus.replaceAll('_', ' ').toUpperCase();
+    }
+
+    return 'PENDING';
+  }
+
   @override
   void dispose() {
     _locationSubscription?.cancel();
@@ -226,10 +280,11 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   }).map((report) {
                     final lat = _reportLatitude(report)!;
                     final lng = _reportLongitude(report)!;
+                    final markerColor = _reportMarkerColor(report);
                     return Marker(
                       point: LatLng(lat, lng),
-                      width: 80,
-                      height: 80,
+                      width: 95,
+                      height: 92,
                       child: GestureDetector(
                         onTap: () => _showReportDetails(report),
                         child: Column(
@@ -237,7 +292,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.orange,
+                                color: markerColor,
                                 shape: BoxShape.circle,
                                 border: Border.all(color: Colors.white, width: 2),
                               ),
@@ -250,11 +305,11 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.orange,
+                                color: markerColor,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                (report['estimated_volume'] ?? report['volume'] ?? 'unknown').toString(),
+                                _markerTag(report),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
