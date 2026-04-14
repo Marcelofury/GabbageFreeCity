@@ -45,9 +45,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           'id': 'RPT-0001',
           'status': 'pending',
           'lastUpdated': DateTime.now(),
-          'address': 'Near Nakawa Market, behind MTN shop',
-          'latitude': 0.3476,
-          'longitude': 32.6169,
+          'address': 'Location unavailable',
+          'latitude': null,
+          'longitude': null,
           'garbageType': 'mixed',
           'volume': 'medium',
           'amount': 5000,
@@ -66,6 +66,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
     final status = report['status']?.toString() ?? 'pending';
     final paymentStatus = report['paymentStatus']?.toString() ?? 'unpaid';
+    final lat = _asDouble(report['latitude']);
+    final lng = _asDouble(report['longitude']);
+    final hasLiveLocation = lat != null && lng != null;
     final canShowCollectionQr = paymentStatus == 'paid' &&
       (status == 'assigned' || status == 'in_progress');
 
@@ -108,27 +111,24 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           const SizedBox(height: 12),
           _section('Location', Icons.location_on_outlined, [
             _row('Address', report['address']?.toString() ?? '-'),
-            _row('Coordinates', '${report['latitude']}, ${report['longitude']}'),
+            _row('Coordinates', hasLiveLocation ? '$lat, $lng' : 'Not available yet'),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  final lat = _asDouble(report['latitude']);
-                  final lng = _asDouble(report['longitude']);
-                  if (lat == null || lng == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Report location unavailable')),
-                    );
-                    return;
-                  }
-
-                  _openInMap(lat, lng);
-                },
+                onPressed: hasLiveLocation ? () => _openInMap(lat, lng) : null,
                 icon: const Icon(Icons.map),
                 label: const Text('Open in Map'),
               ),
             ),
+            if (!hasLiveLocation)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Map opens once report coordinates are loaded from server.',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
           ]),
           const SizedBox(height: 12),
           _section('Garbage Details', Icons.delete_outline, [
@@ -331,7 +331,11 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     return double.tryParse(value?.toString() ?? '');
   }
 
-  Future<void> _openInMap(double lat, double lng) async {
+  Future<void> _openInMap(double? lat, double? lng) async {
+    if (lat == null || lng == null || !mounted) {
+      return;
+    }
+
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
