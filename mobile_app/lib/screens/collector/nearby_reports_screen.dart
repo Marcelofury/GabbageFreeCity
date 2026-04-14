@@ -233,98 +233,153 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
           ),
           // Map view
           Expanded(
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: locationProvider.currentPosition != null
-                    ? LatLng(
-                        locationProvider.currentPosition!.latitude,
-                        locationProvider.currentPosition!.longitude,
-                      )
-                    : const LatLng(0.3476, 32.6169), // Nakawa
-                initialZoom: 13.0,
-                onTap: (_, __) => _clearSelection(),
-              ),
+            child: Stack(
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.kcca.garbage_free_city',
-                ),
-                // Show user location
-                if (locationProvider.currentPosition != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: LatLng(
-                          locationProvider.currentPosition!.latitude,
-                          locationProvider.currentPosition!.longitude,
-                        ),
-                        width: 30,
-                        height: 30,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                          ),
-                        ),
-                      ),
-                    ],
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: locationProvider.currentPosition != null
+                        ? LatLng(
+                            locationProvider.currentPosition!.latitude,
+                            locationProvider.currentPosition!.longitude,
+                          )
+                        : const LatLng(0.3476, 32.6169), // Nakawa
+                    initialZoom: 13.0,
+                    onTap: (_, __) => _clearSelection(),
                   ),
-                // Show nearby reports
-                MarkerLayer(
-                  markers: nearbyReports.where((report) {
-                    final lat = _reportLatitude(report);
-                    final lng = _reportLongitude(report);
-                    return lat != null && lng != null;
-                  }).map((report) {
-                    final lat = _reportLatitude(report)!;
-                    final lng = _reportLongitude(report)!;
-                    final markerColor = _reportMarkerColor(report);
-                    return Marker(
-                      point: LatLng(lat, lng),
-                      width: 95,
-                      height: 92,
-                      child: GestureDetector(
-                        onTap: () => _showReportDetails(report),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.kcca.garbage_free_city',
+                    ),
+                    // Show user location
+                    if (locationProvider.currentPosition != null)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: LatLng(
+                              locationProvider.currentPosition!.latitude,
+                              locationProvider.currentPosition!.longitude,
+                            ),
+                            width: 30,
+                            height: 30,
+                            child: Container(
                               decoration: BoxDecoration(
-                                color: markerColor,
+                                color: Colors.blue,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: const Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                                size: 24,
+                                border: Border.all(color: Colors.white, width: 3),
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: markerColor,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                _markerTag(report),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  }).toList(),
+                    // Show nearby reports
+                    MarkerLayer(
+                      markers: nearbyReports.where((report) {
+                        final lat = _reportLatitude(report);
+                        final lng = _reportLongitude(report);
+                        return lat != null && lng != null;
+                      }).map((report) {
+                        final lat = _reportLatitude(report)!;
+                        final lng = _reportLongitude(report)!;
+                        final markerColor = _reportMarkerColor(report);
+                        return Marker(
+                          point: LatLng(lat, lng),
+                          width: 95,
+                          height: 92,
+                          child: GestureDetector(
+                            onTap: () => _showReportDetails(report),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: markerColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: markerColor,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _markerTag(report),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _legendCard(),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendCard() {
+    return Card(
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Legend',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            _legendItem(Colors.teal.shade600, 'Paid'),
+            _legendItem(Colors.orange, 'Pending payment'),
+            _legendItem(Colors.blue.shade700, 'In progress'),
+            _legendItem(Colors.green.shade700, 'Completed'),
+            _legendItem(Colors.red.shade600, 'Failed payment'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendItem(Color color, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
           ),
         ],
       ),
