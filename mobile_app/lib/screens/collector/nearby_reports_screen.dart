@@ -83,6 +83,12 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
     return 'PENDING';
   }
 
+  String _shortId(Map<String, dynamic> report) {
+    final id = (report['id'] ?? '').toString();
+    if (id.length < 6) return id;
+    return id.substring(0, 6).toUpperCase();
+  }
+
   @override
   void dispose() {
     _locationSubscription?.cancel();
@@ -233,6 +239,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
           ),
           // Map view
           Expanded(
+            flex: 3,
             child: Stack(
               children: [
                 FlutterMap(
@@ -279,7 +286,9 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                         final lat = _reportLatitude(report);
                         final lng = _reportLongitude(report);
                         return lat != null && lng != null;
-                      }).map((report) {
+                      }).toList().asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final report = entry.value;
                         final lat = _reportLatitude(report)!;
                         final lng = _reportLongitude(report)!;
                         final markerColor = _reportMarkerColor(report);
@@ -311,10 +320,10 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    _markerTag(report),
+                                    '#${index + 1} ${_markerTag(report)}',
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 10,
+                                      fontSize: 9,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -332,9 +341,89 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                   right: 12,
                   child: _legendCard(),
                 ),
+                if (nearbyReports.isNotEmpty)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Card(
+                      color: Colors.white.withOpacity(0.95),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Text(
+                          '${nearbyReports.length} reports on map',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+          if (nearbyReports.isNotEmpty)
+            Expanded(
+              flex: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                ),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  itemCount: nearbyReports.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final report = nearbyReports[index];
+                    final markerColor = _reportMarkerColor(report);
+                    final address = (report['address_description'] ?? report['address'] ?? 'Unknown address').toString();
+                    final amount = report['payment_amount'] ?? report['amount'] ?? 0;
+                    final lat = _reportLatitude(report);
+                    final lng = _reportLongitude(report);
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: markerColor.withOpacity(0.2),
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(color: markerColor, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(
+                          address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text('UGX $amount • Ref ${_shortId(report)}'),
+                        trailing: ElevatedButton(
+                          onPressed: () => _acceptAssignment(report),
+                          child: const Text('Accept'),
+                        ),
+                        onTap: () {
+                          if (lat != null && lng != null) {
+                            _mapController.move(LatLng(lat, lng), 16);
+                          }
+                          _showReportDetails(report);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              ),
+              child: const Text(
+                'No reports available right now. Pull to refresh or move location to load more nearby reports.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
         ],
       ),
     );
