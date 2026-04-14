@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1776117496310" clover="3.2.0">
-  <project timestamp="1776117496310" name="All files">
-    <metrics statements="360" coveredstatements="79" conditionals="385" coveredconditionals="47" methods="42" coveredmethods="5" elements="787" coveredelements="131" complexity="0" loc="360" ncloc="360" packages="4" files="5" classes="5"/>
+<coverage generated="1776150410782" clover="3.2.0">
+  <project timestamp="1776150410782" name="All files">
+    <metrics statements="397" coveredstatements="80" conditionals="429" coveredconditionals="47" methods="43" coveredmethods="5" elements="869" coveredelements="132" complexity="0" loc="397" ncloc="397" packages="4" files="5" classes="5"/>
     <package name="config">
       <metrics statements="81" coveredstatements="2" conditionals="68" coveredconditionals="0" methods="12" coveredmethods="0"/>
       <file name="smsService.js" path="C:\Users\USER\GFC\backend\config\smsService.js">
@@ -90,9 +90,9 @@
       </file>
     </package>
     <package name="controllers">
-      <metrics statements="183" coveredstatements="54" conditionals="259" coveredconditionals="42" methods="14" coveredmethods="4"/>
+      <metrics statements="219" coveredstatements="54" conditionals="303" coveredconditionals="42" methods="15" coveredmethods="4"/>
       <file name="paymentController.js" path="C:\Users\USER\GFC\backend\controllers\paymentController.js">
-        <metrics statements="183" coveredstatements="54" conditionals="259" coveredconditionals="42" methods="14" coveredmethods="4"/>
+        <metrics statements="219" coveredstatements="54" conditionals="303" coveredconditionals="42" methods="15" coveredmethods="4"/>
         <line num="1" count="2" type="stmt"/>
         <line num="2" count="2" type="stmt"/>
         <line num="3" count="2" type="stmt"/>
@@ -262,26 +262,62 @@
         <line num="570" count="0" type="stmt"/>
         <line num="584" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="592" count="0" type="stmt"/>
-        <line num="593" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="594" count="0" type="stmt"/>
-        <line num="597" count="0" type="stmt"/>
+        <line num="597" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="598" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="599" count="0" type="stmt"/>
-        <line num="609" count="0" type="stmt"/>
+        <line num="602" count="0" type="stmt"/>
+        <line num="603" count="0" type="stmt"/>
+        <line num="609" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="610" count="0" type="stmt"/>
-        <line num="611" count="0" type="stmt"/>
-        <line num="614" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="618" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="613" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="614" count="0" type="stmt"/>
+        <line num="617" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="618" count="0" type="stmt"/>
+        <line num="621" count="0" type="stmt"/>
+        <line num="622" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="623" count="0" type="stmt"/>
-        <line num="624" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="625" count="0" type="stmt"/>
+        <line num="626" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="627" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="634" count="2" type="stmt"/>
+        <line num="628" count="0" type="stmt"/>
+        <line num="631" count="0" type="stmt"/>
+        <line num="632" count="0" type="stmt"/>
+        <line num="634" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="635" count="0" type="stmt"/>
+        <line num="636" count="0" type="stmt"/>
+        <line num="638" count="0" type="stmt"/>
+        <line num="642" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="643" count="0" type="stmt"/>
+        <line num="647" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="652" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="653" count="0" type="cond" truecount="0" falsecount="3"/>
+        <line num="655" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="656" count="0" type="stmt"/>
+        <line num="659" count="0" type="stmt"/>
+        <line num="666" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="667" count="0" type="stmt"/>
+        <line num="670" count="0" type="stmt"/>
+        <line num="684" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="692" count="0" type="stmt"/>
+        <line num="693" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="694" count="0" type="stmt"/>
+        <line num="697" count="0" type="stmt"/>
+        <line num="699" count="0" type="stmt"/>
+        <line num="709" count="0" type="stmt"/>
+        <line num="710" count="0" type="stmt"/>
+        <line num="711" count="0" type="stmt"/>
+        <line num="714" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="718" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="723" count="0" type="stmt"/>
+        <line num="724" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="725" count="0" type="stmt"/>
+        <line num="727" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="734" count="2" type="stmt"/>
       </file>
     </package>
     <package name="routes">
-      <metrics statements="11" coveredstatements="11" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+      <metrics statements="12" coveredstatements="12" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
       <file name="paymentRoutes.js" path="C:\Users\USER\GFC\backend\routes\paymentRoutes.js">
-        <metrics statements="11" coveredstatements="11" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <metrics statements="12" coveredstatements="12" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
         <line num="6" count="1" type="stmt"/>
         <line num="7" count="1" type="stmt"/>
         <line num="8" count="1" type="stmt"/>
@@ -292,7 +328,8 @@
         <line num="14" count="1" type="stmt"/>
         <line num="15" count="1" type="stmt"/>
         <line num="16" count="1" type="stmt"/>
-        <line num="18" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="19" count="1" type="stmt"/>
       </file>
     </package>
     <package name="services">
