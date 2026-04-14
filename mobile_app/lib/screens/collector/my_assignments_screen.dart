@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/collector_provider.dart';
 
 class MyAssignmentsScreen extends StatefulWidget {
@@ -315,46 +314,14 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
   }
 
   void _showDirections(BuildContext context, {required double lat, required double lng}) async {
-    
-    // Use OpenStreetMap for directions
-    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
-    
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Opening OpenStreetMap directions...'),
-              action: SnackBarAction(
-                label: 'Coordinates',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Location: $lat, $lng'),
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Directions to: $lat, $lng'),
-            action: SnackBarAction(
-              label: 'OK',
-              onPressed: () {},
-            ),
-          ),
-        );
-      }
-    }
+    Navigator.pushNamed(
+      context,
+      '/collector-directions',
+      arguments: {
+        'latitude': lat,
+        'longitude': lng,
+      },
+    );
   }
 
   Future<void> _updateStatus(BuildContext context, String reportId, String currentStatus) async {
