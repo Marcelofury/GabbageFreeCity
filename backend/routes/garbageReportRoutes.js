@@ -20,6 +20,28 @@ const createReportSchema = Joi.object({
     photo_url: Joi.string().uri().allow('', null).optional()
 });
 
+const SUCCESSFUL_PAYMENT_STATUSES = ['successful', 'completed', 'paid', 'success'];
+
+function derivePaymentStatus(report) {
+    const paymentStatuses = (report?.payments || [])
+        .map((p) => String(p?.payment_status || '').toLowerCase())
+        .filter(Boolean);
+
+    if (paymentStatuses.some((status) => SUCCESSFUL_PAYMENT_STATUSES.includes(status))) {
+        return 'successful';
+    }
+
+    if (paymentStatuses.some((status) => status === 'processing' || status === 'initiated')) {
+        return 'processing';
+    }
+
+    if (paymentStatuses.some((status) => status === 'failed' || status === 'rejected' || status === 'declined' || status === 'cancelled')) {
+        return 'failed';
+    }
+
+    return paymentStatuses.includes('pending') ? 'pending' : String(report?.payment_status || 'pending');
+}
+
 /**
  * POST /api/garbage-reports
  * Create a new garbage report (residents only)
@@ -207,31 +229,48 @@ router.get('/nearby', authenticateToken, requireUserType('collector'), async (re
             }));
         };
 
-        if (error) {
-            // Fallback: get all pending reports
+        const fetchAllPendingReports = async () => {
             const { data: allReports, error: fetchError } = await supabase
                 .from('garbage_reports')
                 .select(`
                     *,
+                    payments (
+                        id,
+                        payment_status,
+                        transaction_id
+                    ),
                     resident:users!garbage_reports_resident_id_fkey (
                         full_name,
                         phone_number
                     )
                 `)
                 .eq('status', 'pending')
-                .limit(20);
+                .order('reported_at', { ascending: false })
+                .limit(200);
 
             if (fetchError) throw fetchError;
 
-            const reportsWithCoords = await normalizeWithCoords(allReports || []);
+            const reportsWithCoords = await normalizeWithCoords((allReports || []).map((row) => ({
+                ...row,
+                payment_status: derivePaymentStatus(row),
+            })));
 
+            return reportsWithCoords;
+        };
+
+        if (error) {
+            const reportsWithCoords = await fetchAllPendingReports();
             return res.json({
                 success: true,
                 data: { reports: reportsWithCoords }
             });
         }
 
-        const reportsWithCoords = await normalizeWithCoords(reports || []);
+        let reportsWithCoords = await normalizeWithCoords(reports || []);
+
+        if (reportsWithCoords.length === 0) {
+            reportsWithCoords = await fetchAllPendingReports();
+        }
 
         res.json({
             success: true,
@@ -272,9 +311,11 @@ router.patch('/:id/assign', authenticateToken, requireUserType('collector'), asy
             });
         }
 
-        // Check if payment is successful
-        const payment = report.payments?.[0];
-        if (!payment || payment.payment_status !== 'successful') {
+        // Check if payment is successful (support multiple normalized success variants)
+        const hasSuccessfulPayment = (report.payments || []).some((payment) =>
+            SUCCESSFUL_PAYMENT_STATUSES.includes(String(payment?.payment_status || '').toLowerCase())
+        );
+        if (report.payment_required !== false && !hasSuccessfulPayment) {
             return res.status(400).json({
                 success: false,
                 message: 'Payment not completed for this report'
