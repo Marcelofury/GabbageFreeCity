@@ -93,7 +93,22 @@ async function sendViaDirectApi(recipients, message, priority = '0') {
 
 function normalizePhone(phoneNumber) {
     if (!phoneNumber) return '';
-    return phoneNumber.replace(/\s+/g, '');
+
+    const raw = String(phoneNumber).trim().replace(/\s+/g, '');
+
+    if (raw.startsWith('+256')) {
+        return raw;
+    }
+
+    if (raw.startsWith('256')) {
+        return `+${raw}`;
+    }
+
+    if (raw.startsWith('0') && raw.length === 10) {
+        return `+256${raw.slice(1)}`;
+    }
+
+    return raw;
 }
 
 function resolveRecipients(phoneNumber) {
@@ -157,10 +172,12 @@ async function sendSMS(phoneNumber, message) {
             recipients,
         };
     } catch (error) {
-        console.error('❌ EGO SMS error:', error.message);
+        const providerDetails = error.response?.data || null;
+        console.error('❌ EGO SMS error:', error.message, providerDetails || '');
         return {
             success: false,
             error: error.message,
+            details: providerDetails,
         };
     }
 }
@@ -208,10 +225,12 @@ async function sendBulkSMS(phoneNumbers, message) {
             recipients: normalized,
         };
     } catch (error) {
-        console.error('❌ EGO bulk SMS error:', error.message);
+        const providerDetails = error.response?.data || null;
+        console.error('❌ EGO bulk SMS error:', error.message, providerDetails || '');
         return {
             success: false,
             error: error.message,
+            details: providerDetails,
         };
     }
 }

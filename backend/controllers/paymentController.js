@@ -47,6 +47,70 @@ function toPaymentStatus(orderPaymentStatus) {
     return 'pending';
 }
 
+function formatSmsTemplate(template, variables) {
+    return String(template || '').replace(/\{(\w+)\}/g, (_, key) => String(variables?.[key] ?? ''));
+}
+
+function buildPaymentSmsMessage({ success, name, amount }) {
+    const successTemplate = process.env.SMS_PAYMENT_SUCCESS ||
+        'Webale nyo {name}! Payment of UGX {amount} received. Collector assigned soon. -KCCA GFC';
+    const failedTemplate = process.env.SMS_PAYMENT_FAILED ||
+        'Sorry {name}, payment of UGX {amount} failed. Please try again. -KCCA GFC';
+
+    const selected = success ? successTemplate : failedTemplate;
+    return formatSmsTemplate(selected, {
+        name: name || 'Resident',
+        amount: Number(amount || 0).toFixed(0),
+    });
+}
+
+async function notifyPaymentTransition({
+    residentId,
+    reportId,
+    transactionRef,
+    providerRef,
+    amount,
+    newPaymentStatus,
+    previousPaymentStatus,
+}) {
+    if (!residentId) {
+        return;
+    }
+
+    const changed = String(previousPaymentStatus || '').toLowerCase() !== String(newPaymentStatus || '').toLowerCase();
+    if (!changed) {
+        return;
+    }
+
+    const isSuccess = newPaymentStatus === 'successful';
+    const isFailed = newPaymentStatus === 'failed';
+
+    const { data: resident } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', residentId)
+        .maybeSingle();
+
+    const title = isSuccess ? 'Payment successful' : isFailed ? 'Payment failed' : 'Payment update';
+    const message = isSuccess || isFailed
+        ? buildPaymentSmsMessage({ success: isSuccess, name: resident?.full_name, amount })
+        : `Payment status changed to ${newPaymentStatus}.`;
+
+    await createNotification({
+        userId: residentId,
+        title,
+        message,
+        type: 'payment',
+        data: {
+            report_id: reportId,
+            transaction_ref: transactionRef,
+            provider_ref: providerRef,
+            payment_status: newPaymentStatus,
+        },
+        sendSms: isSuccess || isFailed,
+    });
+}
+
 function extractLookupPayload(payload) {
     const root = payload || {};
     const data = root.data || {};
@@ -459,28 +523,15 @@ async function handleMarzpayCallback(req, res, next) {
             .eq('transaction_ref', transactionRef)
             .maybeSingle();
 
-        if (paymentRow?.resident_id) {
-            const isSuccess = transition.new_payment_status === 'successful';
-            const isFailed = transition.new_payment_status === 'failed';
-
-            await createNotification({
-                userId: paymentRow.resident_id,
-                title: isSuccess ? 'Payment successful' : isFailed ? 'Payment failed' : 'Payment update',
-                message: isSuccess
-                    ? `Payment of UGX ${paymentRow.amount} was successful.`
-                    : isFailed
-                        ? `Payment of UGX ${paymentRow.amount} failed. Please try again.`
-                        : `Payment status changed to ${transition.new_payment_status}.`,
-                type: 'payment',
-                data: {
-                    report_id: paymentRow.report_id,
-                    transaction_ref: transactionRef,
-                    provider_ref: providerRef,
-                    payment_status: transition.new_payment_status,
-                },
-                sendSms: isSuccess || isFailed,
-            });
-        }
+        await notifyPaymentTransition({
+            residentId: paymentRow?.resident_id,
+            reportId: paymentRow?.report_id,
+            transactionRef,
+            providerRef,
+            amount: paymentRow?.amount,
+            newPaymentStatus: transition.new_payment_status,
+            previousPaymentStatus: transition.previous_payment_status,
+        });
 
         return res.json({
             success: true,
@@ -666,6 +717,16 @@ async function syncPaymentStatus(req, res) {
         if (!transition) {
             return res.status(404).json({ success: false, message: 'Payment transition not found' });
         }
+
+        await notifyPaymentTransition({
+            residentId: payment.resident_id,
+            reportId: transition.report_id,
+            transactionRef: effectiveTransactionRef,
+            providerRef: extracted.providerRef || payment.transaction_id || null,
+            amount: null,
+            newPaymentStatus: transition.new_payment_status,
+            previousPaymentStatus: transition.previous_payment_status,
+        });
 
         return res.json({
             success: true,
