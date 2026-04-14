@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/collector_provider.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
@@ -162,7 +161,15 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
                     return;
                   }
 
-                  _openMaps(lat, lng);
+                  Navigator.pushNamed(
+                    context,
+                    '/collector-directions',
+                    arguments: {
+                      'latitude': lat,
+                      'longitude': lng,
+                      'address': assignment['address']?.toString() ?? 'Resident location',
+                    },
+                  );
                 },
                 icon: const Icon(Icons.directions),
                 label: const Text('Directions'),
@@ -276,20 +283,6 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
   double? _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');
-  }
-
-  Future<void> _openMaps(double lat, double lng) async {
-    final url = Uri.parse('https://www.openstreetmap.org/directions?to=$lat,$lng');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Coordinates: $lat, $lng')),
-      );
-    }
   }
 
   void _confirmAction(BuildContext context, String action, String reportId) {
