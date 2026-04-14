@@ -10,6 +10,10 @@ const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
 const { createNotification } = require('../services/notificationService');
 
+function formatSmsTemplate(template, variables) {
+    return String(template || '').replace(/\{(\w+)\}/g, (_, key) => String(variables?.[key] ?? ''));
+}
+
 function parseCoordinatesFromLocation(locationValue) {
     if (!locationValue || typeof locationValue !== 'string') {
         return { latitude: null, longitude: null };
@@ -117,12 +121,19 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
         await createNotification({
             userId: req.user.id,
             title: 'Report submitted',
-            message: `Your report at ${address_description} was created successfully.`,
+            message: formatSmsTemplate(
+                process.env.SMS_REPORT_CREATED || 'Hello {name}, your report at {location} was submitted successfully. -KCCA GFC',
+                {
+                    name: req.user.full_name || 'Resident',
+                    location: address_description,
+                }
+            ),
             type: 'report',
             data: {
                 report_id: report.id,
                 status: report.status,
             },
+            sendSms: true,
         });
 
     } catch (error) {
@@ -371,7 +382,14 @@ router.patch('/:id/assign', authenticateToken, requireUserType('collector'), asy
         await createNotification({
             userId: report.resident_id,
             title: 'Collector assigned',
-            message: 'A collector has been assigned to your garbage report.',
+            message: formatSmsTemplate(
+                process.env.SMS_COLLECTION_ASSIGNED || 'Hello {name}, collector {collector} is on the way to {location}. -KCCA GFC',
+                {
+                    name: 'Resident',
+                    collector: req.user.full_name || req.user.username || 'Collector',
+                    location: report.address_description || 'your location',
+                }
+            ),
             type: 'assignment',
             data: {
                 report_id: id,
@@ -435,7 +453,12 @@ router.patch('/:id/status', authenticateToken, async (req, res, next) => {
             await createNotification({
                 userId: report.resident_id,
                 title: 'Report status updated',
-                message: `Your report status is now ${status.replace('_', ' ')}.`,
+                message: status === 'completed'
+                    ? formatSmsTemplate(
+                        process.env.SMS_COLLECTION_COMPLETED || 'Collection completed at {location}. Thank you for using GFC! -KCCA GFC',
+                        { location: report.address_description || 'your location' }
+                    )
+                    : `Your report status is now ${status.replace('_', ' ')}.`,
                 type: 'report',
                 data: {
                     report_id: report.id,

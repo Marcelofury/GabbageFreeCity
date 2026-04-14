@@ -11,6 +11,10 @@ const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
 const { createNotification } = require('../services/notificationService');
 
+function formatSmsTemplate(template, variables) {
+    return String(template || '').replace(/\{(\w+)\}/g, (_, key) => String(variables?.[key] ?? ''));
+}
+
 const updateProfileSchema = Joi.object({
     full_name: Joi.string().min(2).max(100).optional(),
     area: Joi.string().max(100).allow('', null).optional(),
@@ -333,7 +337,10 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
             await createNotification({
                 userId: report.resident_id,
                 title: 'Collection completed',
-                message: 'Your reported garbage has been collected.',
+                message: formatSmsTemplate(
+                    process.env.SMS_COLLECTION_COMPLETED || 'Collection completed at {location}. Thank you for using GFC! -KCCA GFC',
+                    { location: report.address_description || 'your location' }
+                ),
                 type: 'collection',
                 data: { report_id },
                 sendSms: true,
