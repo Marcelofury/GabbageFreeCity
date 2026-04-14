@@ -77,6 +77,20 @@ class CollectorProvider with ChangeNotifier {
       _isLoading = false;
 
       if (response['success'] == true) {
+        final assignedReport = response['data']?['report'];
+        if (assignedReport is Map<String, dynamic>) {
+          final normalized = Map<String, dynamic>.from(assignedReport);
+          _assignments = [
+            normalized,
+            ..._assignments.where((item) => item['id']?.toString() != normalized['id']?.toString()),
+          ];
+          _nearbyReports = _nearbyReports
+              .where((item) => item['id']?.toString() != normalized['id']?.toString())
+              .toList();
+        }
+
+        // Pull latest server truth so My Assignments always reflects accepted jobs.
+        await fetchMyAssignments();
         notifyListeners();
         return true;
       }

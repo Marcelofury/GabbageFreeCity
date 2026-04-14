@@ -701,6 +701,10 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
               final collectorProvider = Provider.of<CollectorProvider>(context, listen: false);
               final success = await collectorProvider.acceptAssignment(report['id'].toString());
 
+              if (success) {
+                await collectorProvider.fetchMyAssignments();
+              }
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
