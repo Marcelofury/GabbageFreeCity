@@ -172,7 +172,13 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
                   );
                 },
                 icon: const Icon(Icons.directions),
-                label: const Text('Directions'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                ),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Directions', maxLines: 1),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -195,7 +201,16 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
                   _confirmAction(context, action, assignment['id'].toString());
                 },
                 icon: Icon(status == 'in_progress' ? Icons.qr_code_scanner : Icons.check),
-                label: Text(status == 'assigned' ? 'Start Collection' : 'Scan QR to Complete'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                ),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    status == 'assigned' ? 'Start Collection' : 'Scan QR to Complete',
+                    maxLines: 1,
+                  ),
+                ),
               ),
             ),
           ],

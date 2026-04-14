@@ -203,7 +203,13 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                                     }
                                   },
                                   icon: const Icon(Icons.directions, size: 18),
-                                  label: const Text('Directions'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                  ),
+                                  label: const FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Directions', maxLines: 1),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -225,8 +231,15 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                                     _updateStatus(context, assignment['id'].toString(), status);
                                   },
                                   icon: Icon(status == 'in_progress' ? Icons.qr_code_scanner : Icons.check, size: 18),
-                                  label: Text(
-                                    _getActionText(status),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                  ),
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      _getActionText(status),
+                                      maxLines: 1,
+                                    ),
                                   ),
                                 ),
                               ),
