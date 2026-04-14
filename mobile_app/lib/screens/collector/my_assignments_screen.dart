@@ -16,6 +16,14 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
     return double.tryParse(value?.toString() ?? '');
   }
 
+  double? _assignmentLatitude(Map<String, dynamic> assignment) {
+    return _asDouble(assignment['latitude'] ?? assignment['lat']);
+  }
+
+  double? _assignmentLongitude(Map<String, dynamic> assignment) {
+    return _asDouble(assignment['longitude'] ?? assignment['lng']);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -179,8 +187,8 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                                 'garbageType': assignment['garbage_type'] ?? 'mixed',
                                 'distanceKm': assignment['distance_km'] ?? 0,
                                 'etaMinutes': assignment['eta_minutes'] ?? 0,
-                                'latitude': _asDouble(assignment['latitude']),
-                                'longitude': _asDouble(assignment['longitude']),
+                                'latitude': _assignmentLatitude(assignment),
+                                'longitude': _assignmentLongitude(assignment),
                               },
                             );
                           },
@@ -192,8 +200,8 @@ class _MyAssignmentsScreenState extends State<MyAssignmentsScreen> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
-                                    final lat = _asDouble(assignment['latitude']);
-                                    final lng = _asDouble(assignment['longitude']);
+                                    final lat = _assignmentLatitude(assignment);
+                                    final lng = _assignmentLongitude(assignment);
                                     if (lat != null && lng != null) {
                                       _showDirections(context, lat: lat, lng: lng);
                                     } else {

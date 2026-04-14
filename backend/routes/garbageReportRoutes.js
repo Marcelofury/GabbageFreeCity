@@ -10,6 +10,22 @@ const { supabase } = require('../config/supabase');
 const { authenticateToken, requireUserType } = require('../middleware/auth');
 const { createNotification } = require('../services/notificationService');
 
+function parseCoordinatesFromLocation(locationValue) {
+    if (!locationValue || typeof locationValue !== 'string') {
+        return { latitude: null, longitude: null };
+    }
+
+    const pointMatch = locationValue.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/i);
+    if (!pointMatch) {
+        return { latitude: null, longitude: null };
+    }
+
+    return {
+        latitude: Number(pointMatch[2]),
+        longitude: Number(pointMatch[1]),
+    };
+}
+
 // Validation schema
 const createReportSchema = Joi.object({
     latitude: Joi.number().min(-90).max(90).required(),
@@ -338,10 +354,18 @@ router.patch('/:id/assign', authenticateToken, requireUserType('collector'), asy
             throw updateError;
         }
 
+        const parsedCoords = parseCoordinatesFromLocation(updatedReport.location);
+
         res.json({
             success: true,
             message: 'Report assigned successfully',
-            data: { report: updatedReport }
+            data: {
+                report: {
+                    ...updatedReport,
+                    latitude: parsedCoords.latitude,
+                    longitude: parsedCoords.longitude,
+                },
+            }
         });
 
         await createNotification({

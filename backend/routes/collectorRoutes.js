@@ -17,6 +17,33 @@ const updateProfileSchema = Joi.object({
     is_active: Joi.boolean().optional(),
 }).or('full_name', 'area', 'is_active');
 
+function parseCoordinatesFromLocation(locationValue) {
+    if (!locationValue) {
+        return { latitude: null, longitude: null };
+    }
+
+    if (typeof locationValue === 'string') {
+        // Handles POINT(lng lat)
+        const pointMatch = locationValue.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/i);
+        if (pointMatch) {
+            return {
+                latitude: Number(pointMatch[2]),
+                longitude: Number(pointMatch[1]),
+            };
+        }
+    }
+
+    if (typeof locationValue === 'object') {
+        const latitude = Number(locationValue.lat ?? locationValue.latitude ?? locationValue.y);
+        const longitude = Number(locationValue.lng ?? locationValue.longitude ?? locationValue.x);
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+            return { latitude, longitude };
+        }
+    }
+
+    return { latitude: null, longitude: null };
+}
+
 async function attachReportCoordinates(reports) {
     if (!Array.isArray(reports) || reports.length === 0) {
         return [];
@@ -55,8 +82,8 @@ async function attachReportCoordinates(reports) {
 
     return reports.map((report) => ({
         ...report,
-        latitude: coordMap[report.id]?.latitude ?? null,
-        longitude: coordMap[report.id]?.longitude ?? null,
+        latitude: coordMap[report.id]?.latitude ?? parseCoordinatesFromLocation(report.location).latitude,
+        longitude: coordMap[report.id]?.longitude ?? parseCoordinatesFromLocation(report.location).longitude,
     }));
 }
 
