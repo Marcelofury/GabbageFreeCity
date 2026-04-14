@@ -16,6 +16,28 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     return normalized == 'successful' || normalized == 'completed' || normalized == 'paid' || normalized == 'success';
   }
 
+  String _compactStatusLabel(dynamic report) {
+    final status = report.status.toString().toLowerCase();
+    final paymentStatus = report.paymentStatus.toString().toLowerCase();
+
+    if (status == 'pending') {
+      if (_isPaid(paymentStatus)) {
+        return 'Awaiting Assignment';
+      }
+      if (paymentStatus == 'processing' || paymentStatus == 'initiated') {
+        return 'Payment Processing';
+      }
+      return 'Pending Payment';
+    }
+
+    if (status == 'assigned') return 'Collector Assigned';
+    if (status == 'in_progress') return 'In Progress';
+    if (status == 'completed') return 'Completed';
+    if (status == 'cancelled') return 'Cancelled';
+
+    return report.statusDisplay.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -90,19 +112,30 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                               ),
                             ],
                           ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                report.statusDisplay,
-                                style: TextStyle(
-                                  color: _getStatusColor(report.status),
-                                  fontWeight: FontWeight.bold,
+                          trailing: SizedBox(
+                            width: 130,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  _compactStatusLabel(report),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: _getStatusColor(report.status),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              Text('UGX ${report.paymentAmount.toStringAsFixed(0)}'),
-                            ],
+                                Text(
+                                  'UGX ${report.paymentAmount.toStringAsFixed(0)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
+                                ),
+                              ],
+                            ),
                           ),
                           onTap: () {
                             Navigator.pushNamed(
