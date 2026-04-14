@@ -146,7 +146,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
 
     final report = target.first;
-    if (report.status != 'pending') {
+    if (!_isReportPaymentPending(report)) {
       _autoPayTriggered = true;
       return;
     }
@@ -253,7 +253,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                           const SizedBox(height: 8),
                           // Report payments list
                           ...reportProvider.reports.map((report) {
-                            final isPending = report.status == 'pending';
+                            final isPending = _isReportPaymentPending(report);
                             final isTarget = report.id == _targetReportId;
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -300,7 +300,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            isPending ? 'Payment Pending' : 'Payment Complete',
+                                            _paymentLabel(report),
                                             style: TextStyle(
                                               color: isPending ? Colors.orange : Colors.green,
                                               fontWeight: FontWeight.bold,
@@ -366,15 +366,38 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   int _getPendingCount() {
     final reportProvider = Provider.of<ReportProvider>(context, listen: false);
-    return reportProvider.reports.where((r) => r.status == 'pending').length;
+    return reportProvider.reports.where((r) => _isReportPaymentPending(r)).length;
   }
 
   String _calculateTotalPending() {
     final reportProvider = Provider.of<ReportProvider>(context, listen: false);
     final total = reportProvider.reports
-        .where((r) => r.status == 'pending')
+        .where((r) => _isReportPaymentPending(r))
         .fold<double>(0, (sum, r) => sum + r.paymentAmount);
     return total.toStringAsFixed(0);
+  }
+
+  bool _isReportPaymentPending(dynamic report) {
+    final paymentStatus = (report.paymentStatus ?? 'pending').toString().toLowerCase();
+    return !['successful', 'completed', 'paid'].contains(paymentStatus);
+  }
+
+  String _paymentLabel(dynamic report) {
+    final paymentStatus = (report.paymentStatus ?? 'pending').toString().toLowerCase();
+
+    if (['successful', 'completed', 'paid'].contains(paymentStatus)) {
+      return 'Payment Complete';
+    }
+
+    if (paymentStatus == 'processing') {
+      return 'Payment Processing';
+    }
+
+    if (paymentStatus == 'failed' || paymentStatus == 'cancelled') {
+      return 'Payment Failed';
+    }
+
+    return 'Payment Pending';
   }
 
   Future<void> _initiatePayment(String reportId) async {
