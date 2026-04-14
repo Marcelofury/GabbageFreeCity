@@ -11,6 +11,8 @@ router.use(authenticateToken, requireAdmin);
  */
 router.get('/dashboard', async (req, res, next) => {
     try {
+        const successfulPaymentStatuses = ['successful', 'completed', 'paid', 'success'];
+
         const [
             { count: activeCollectors, error: activeError },
             { count: inactiveCollectors, error: inactiveError },
@@ -20,7 +22,9 @@ router.get('/dashboard', async (req, res, next) => {
             { count: pendingReports, error: pendingReportsError },
             { count: acceptedReports, error: acceptedReportsError },
             { count: completedReports, error: completedReportsError },
-            { data: paidPayments, error: paidPaymentsError },
+            { data: paidPayments, count: paidPaymentsCount, error: paidPaymentsError },
+            { count: pendingPaymentsCount, error: pendingPaymentsError },
+            { count: failedPaymentsCount, error: failedPaymentsError },
             { data: completionSamples, error: completionSamplesError },
         ] = await Promise.all([
             supabase
@@ -59,8 +63,16 @@ router.get('/dashboard', async (req, res, next) => {
                 .eq('status', 'completed'),
             supabase
                 .from('payments')
-                .select('amount')
-                .eq('payment_status', 'successful'),
+                .select('amount, transaction_id, provider_reference', { count: 'exact' })
+                .in('payment_status', successfulPaymentStatuses),
+            supabase
+                .from('payments')
+                .select('*', { count: 'exact', head: true })
+                .eq('payment_status', 'pending'),
+            supabase
+                .from('payments')
+                .select('*', { count: 'exact', head: true })
+                .in('payment_status', ['failed', 'cancelled', 'rejected', 'declined']),
             supabase
                 .from('garbage_reports')
                 .select('reported_at, completed_at')
@@ -73,12 +85,14 @@ router.get('/dashboard', async (req, res, next) => {
         if (
             activeError || inactiveError || assignmentError || collectionsTodayError ||
             totalReportsError || pendingReportsError || acceptedReportsError ||
-            completedReportsError || paidPaymentsError || completionSamplesError
+            completedReportsError || paidPaymentsError || pendingPaymentsError ||
+            failedPaymentsError || completionSamplesError
         ) {
             throw (
                 activeError || inactiveError || assignmentError || collectionsTodayError ||
                 totalReportsError || pendingReportsError || acceptedReportsError ||
-                completedReportsError || paidPaymentsError || completionSamplesError
+                completedReportsError || paidPaymentsError || pendingPaymentsError ||
+                failedPaymentsError || completionSamplesError
             );
         }
 
@@ -86,6 +100,10 @@ router.get('/dashboard', async (req, res, next) => {
             const amount = Number(row.amount || 0);
             return sum + (Number.isFinite(amount) ? amount : 0);
         }, 0);
+
+        const successfulTransactionRefs = new Set(
+            (paidPayments || []).map((row) => String(row.transaction_id || row.provider_reference || '').trim()).filter(Boolean)
+        );
 
         const completionDurations = (completionSamples || [])
             .map((row) => {
@@ -118,11 +136,15 @@ router.get('/dashboard', async (req, res, next) => {
                 reports_made: totalCount,
                 reports_pending: pendingReports || 0,
                 reports_accepted: acceptedReports || 0,
+                reports_completed: completedCount,
                 analytics: {
                     completion_rate_percent: completionRate,
                     total_revenue_ugx: totalRevenueUgx,
                     average_completion_minutes: avgCompletionMinutes,
-                    paid_transactions: (paidPayments || []).length,
+                    paid_transactions: paidPaymentsCount || (paidPayments || []).length,
+                    successful_transactions: successfulTransactionRefs.size,
+                    pending_payments: pendingPaymentsCount || 0,
+                    failed_payments: failedPaymentsCount || 0,
                 },
             },
         });

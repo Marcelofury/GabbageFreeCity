@@ -22,7 +22,16 @@ class AdminProvider with ChangeNotifier {
     'reports_made': 0,
     'reports_pending': 0,
     'reports_accepted': 0,
-    'analytics': <String, dynamic>{},
+    'reports_completed': 0,
+    'analytics': <String, dynamic>{
+      'paid_transactions': 0,
+      'successful_transactions': 0,
+      'pending_payments': 0,
+      'failed_payments': 0,
+      'total_revenue_ugx': 0,
+      'completion_rate_percent': 0,
+      'average_completion_minutes': 0,
+    },
   };
 
   bool get isLoading => _isLoading;
