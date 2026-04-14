@@ -24,6 +24,7 @@ import 'screens/collector/qr_scanner_screen.dart';
 import 'screens/collector/history_screen.dart';
 import 'screens/collector/assignment_details_screen.dart';
 import 'screens/collector/collector_profile_screen.dart';
+import 'screens/collector/collector_directions_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/admin_collectors_screen.dart';
@@ -122,6 +123,7 @@ class GarbageFreeCityApp extends StatelessWidget {
           '/nearby-reports': (context) => const NearbyReportsScreen(),
           '/my-assignments': (context) => const MyAssignmentsScreen(),
           '/assignment-details': (context) => const AssignmentDetailsScreen(),
+          '/collector-directions': (context) => const CollectorDirectionsScreen(),
           '/qr-scanner': (context) => const QRScannerScreen(),
           '/history': (context) => const HistoryScreen(),
           '/collector-profile': (context) => const CollectorProfileScreen(),
