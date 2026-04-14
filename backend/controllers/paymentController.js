@@ -588,6 +588,106 @@ async function reconcileMarzpayPayment(req, res) {
     }
 }
 
+async function syncPaymentStatus(req, res) {
+    const schema = Joi.object({
+        transaction_ref: Joi.string().min(8).optional(),
+        report_id: Joi.string().uuid().optional(),
+    }).or('transaction_ref', 'report_id');
+
+    const { error, value } = schema.validate(req.body || {});
+    if (error) {
+        return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    try {
+        let paymentQuery = supabase
+            .from('payments')
+            .select('id, report_id, resident_id, transaction_ref, flw_ref, transaction_id')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (value.transaction_ref) {
+            paymentQuery = paymentQuery.or(`transaction_ref.eq.${value.transaction_ref},flw_ref.eq.${value.transaction_ref}`);
+        }
+
+        if (value.report_id) {
+            paymentQuery = paymentQuery.eq('report_id', value.report_id);
+        }
+
+        if (req.user.user_type !== 'admin') {
+            paymentQuery = paymentQuery.eq('resident_id', req.user.id);
+        }
+
+        const { data: rows, error: paymentError } = await paymentQuery;
+        if (paymentError) {
+            throw paymentError;
+        }
+
+        const payment = Array.isArray(rows) ? rows[0] : null;
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Payment not found' });
+        }
+
+        const providerUuid = payment.transaction_id;
+        let providerPayload = null;
+
+        if (providerUuid) {
+            try {
+                providerPayload = await marzpayService.checkTransactionStatus(providerUuid);
+            } catch (_) {
+                providerPayload = null;
+            }
+        }
+
+        if (!providerPayload) {
+            const history = await marzpayService.getTransactionHistory({
+                reference: payment.transaction_ref || payment.flw_ref,
+            });
+
+            providerPayload = Array.isArray(history?.data)
+                ? { data: { transaction: history.data[0] || null } }
+                : history;
+        }
+
+        const extracted = extractLookupPayload(providerPayload || {});
+        const effectiveTransactionRef = payment.transaction_ref || payment.flw_ref || extracted.transactionRef;
+
+        if (!effectiveTransactionRef) {
+            return res.status(400).json({ success: false, message: 'Unable to determine transaction reference' });
+        }
+
+        const transition = await applyMarzpayTransition({
+            transactionRef: effectiveTransactionRef,
+            providerRef: extracted.providerRef || payment.transaction_id || null,
+            providerStatus: extracted.status,
+            payload: providerPayload || {},
+        });
+
+        if (!transition) {
+            return res.status(404).json({ success: false, message: 'Payment transition not found' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Payment status synchronized',
+            data: {
+                payment_id: transition.payment_id,
+                report_id: transition.report_id,
+                previous_payment_status: transition.previous_payment_status,
+                new_payment_status: transition.new_payment_status,
+                previous_order_status: transition.previous_order_status,
+                new_order_status: transition.new_order_status,
+                provider_status: extracted.status,
+            },
+        });
+    } catch (syncError) {
+        return res.status(syncError.statusCode || 500).json({
+            success: false,
+            message: syncError.message || 'Failed to synchronize payment status',
+        });
+    }
+}
+
 async function validatePhone(req, res) {
     const { error, value } = validatePhoneSchema.validate(req.body);
     if (error) {
@@ -638,5 +738,6 @@ module.exports = {
     getWalletBalance,
     getMarzpayTransactions,
     reconcileMarzpayPayment,
+    syncPaymentStatus,
     mapMarzPayStatus,
 };

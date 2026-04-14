@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
@@ -19,6 +20,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   bool _autoPayFromRoute = false;
   bool _routeInitialized = false;
   bool _autoPayTriggered = false;
+  bool _isSyncingPayment = false;
 
   String? _getUssdCodeForProvider(String? provider) {
     final normalized = provider?.toUpperCase();
@@ -426,6 +428,13 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           ),
         );
 
+        if (transactionRef != 'N/A') {
+          unawaited(_pollAndSyncPaymentStatus(
+            reportId: reportId,
+            transactionRef: transactionRef,
+          ));
+        }
+
         await _showPaymentInstructionDialog(
           transactionRef: transactionRef,
           provider: provider,
@@ -454,6 +463,51 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           _processingReportId = null;
         });
       }
+    }
+  }
+
+  Future<void> _pollAndSyncPaymentStatus({
+    required String reportId,
+    required String transactionRef,
+  }) async {
+    if (_isSyncingPayment) return;
+    _isSyncingPayment = true;
+
+    try {
+      for (var attempt = 0; attempt < 12; attempt++) {
+        await Future.delayed(Duration(seconds: attempt == 0 ? 4 : 10));
+        if (!mounted) return;
+
+        final syncResult = await _apiService.syncPaymentStatus(
+          transactionRef: transactionRef,
+          reportId: reportId,
+        );
+
+        if (syncResult['success'] != true) {
+          continue;
+        }
+
+        final data = syncResult['data'] as Map<String, dynamic>?;
+        final paymentStatus = data?['new_payment_status']?.toString() ?? 'pending';
+
+        if (paymentStatus == 'successful' || paymentStatus == 'failed') {
+          await _loadReports();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                paymentStatus == 'successful'
+                    ? 'Payment confirmed successfully.'
+                    : 'Payment failed or expired. Please try again.',
+              ),
+              backgroundColor: paymentStatus == 'successful' ? Colors.green : Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    } finally {
+      _isSyncingPayment = false;
     }
   }
 

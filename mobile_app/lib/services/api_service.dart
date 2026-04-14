@@ -201,6 +201,32 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  /// Synchronize payment status with provider and update backend records
+  Future<Map<String, dynamic>> syncPaymentStatus({
+    required String transactionRef,
+    String? reportId,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.post(
+        Uri.parse('$BASE_URL/payments/sync-status'),
+        headers: headers,
+        body: jsonEncode({
+          'transaction_ref': transactionRef,
+          if (reportId != null) 'report_id': reportId,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Validate Uganda mobile money phone for MarzPay
   Future<Map<String, dynamic>> validatePaymentPhone({
     required String phone,
