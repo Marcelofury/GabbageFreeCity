@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 
@@ -25,6 +26,10 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
     'completed_count': 0,
     'managed_value_ugx': 0,
   };
+
+  static const String _supportPhone = '+256700000000';
+  static const String _supportEmail = 'support@gfc.ug';
+  static const String _helpCenterUrl = 'https://gabbagefreecity.onrender.com/';
 
   @override
   void initState() {
@@ -104,6 +109,46 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
     setState(() {
       _error = response['message']?.toString() ?? 'Failed to save profile';
     });
+  }
+
+  Future<void> _openHelpCenter() async {
+    final uri = Uri.parse(_helpCenterUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to open Help Center right now.')),
+    );
+  }
+
+  Future<void> _reportIssue() async {
+    final uri = Uri.parse('mailto:$_supportEmail?subject=Collector%20Issue%20Report');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to open email app.')),
+    );
+  }
+
+  Future<void> _contactSupport() async {
+    final encoded = _supportPhone.replaceAll(' ', '');
+    final uri = Uri.parse('tel:$encoded');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Call support on $_supportPhone')),
+    );
   }
 
   @override
@@ -216,20 +261,32 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
           ),
           const SizedBox(height: 8),
           _sectionTitle('Support'),
-          const ListTile(
-            leading: Icon(Icons.help_outline),
-            title: Text('Help Center'),
-            trailing: Icon(Icons.chevron_right),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Help Center'),
+            subtitle: const Text('Open guides and FAQs'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openHelpCenter,
           ),
-          const ListTile(
-            leading: Icon(Icons.bug_report_outlined),
-            title: Text('Report Issue'),
-            trailing: Icon(Icons.chevron_right),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Report Issue'),
+            subtitle: Text('Email: $_supportEmail'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _reportIssue,
           ),
-          const ListTile(
-            leading: Icon(Icons.privacy_tip_outlined),
-            title: Text('Terms & Privacy'),
-            trailing: Icon(Icons.chevron_right),
+          ListTile(
+            leading: const Icon(Icons.support_agent),
+            title: const Text('Contact Support'),
+            subtitle: Text('Call: $_supportPhone'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _contactSupport,
+          ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Terms & Privacy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _openHelpCenter,
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(

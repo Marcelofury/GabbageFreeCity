@@ -11,6 +11,11 @@ class MyReportsScreen extends StatefulWidget {
 }
 
 class _MyReportsScreenState extends State<MyReportsScreen> {
+  bool _isPaid(String paymentStatus) {
+    final normalized = paymentStatus.toLowerCase();
+    return normalized == 'successful' || normalized == 'completed' || normalized == 'paid' || normalized == 'success';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -115,7 +120,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                                 'volume': report.estimatedVolume,
                                 'sackCount': report.sackCount,
                                 'amount': report.paymentAmount.toStringAsFixed(0),
-                                'paymentStatus': report.paymentStatus == 'successful' ? 'paid' : 'unpaid',
+                                'paymentStatus': _isPaid(report.paymentStatus) ? 'paid' : 'unpaid',
                                 'txRef': report.transactionRef ?? 'N/A',
                                 'collectorName': report.assignedCollectorId != null ? 'Assigned Collector' : null,
                                 'eta': report.status == 'assigned' ? '~20 min' : null,

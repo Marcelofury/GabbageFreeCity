@@ -217,6 +217,13 @@ class GarbageReport {
   String get statusDisplay {
     switch (status) {
       case 'pending':
+        final normalizedPayment = paymentStatus.toLowerCase();
+        if (normalizedPayment == 'successful' || normalizedPayment == 'completed' || normalizedPayment == 'paid' || normalizedPayment == 'success') {
+          return 'Waiting Collector Assignment';
+        }
+        if (normalizedPayment == 'processing' || normalizedPayment == 'initiated') {
+          return 'Payment Processing';
+        }
         return 'Pending Payment';
       case 'assigned':
         return 'Collector Assigned';
