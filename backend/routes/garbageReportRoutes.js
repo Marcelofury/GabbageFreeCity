@@ -381,9 +381,13 @@ router.patch('/:id/status', authenticateToken, async (req, res, next) => {
 
         const updateData = { status };
         if (status === 'in_progress') {
-            updateData.started_at = new Date().toISOString();
+            // Some environments don't have started_at; keep transition portable.
+            updateData.updated_at = new Date().toISOString();
         } else if (status === 'completed') {
             updateData.completed_at = new Date().toISOString();
+            updateData.updated_at = new Date().toISOString();
+        } else {
+            updateData.updated_at = new Date().toISOString();
         }
 
         const { data: report, error } = await supabase
