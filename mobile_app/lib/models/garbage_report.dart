@@ -8,7 +8,7 @@ class GarbageReport {
   final double longitude;
   final String addressDescription;
   final String garbageType;
-  final int sackCount;
+  final int packageCount;
   final String estimatedVolume;
   final String? photoUrl;
   final String status;
@@ -28,7 +28,7 @@ class GarbageReport {
     required this.longitude,
     required this.addressDescription,
     required this.garbageType,
-    required this.sackCount,
+    required this.packageCount,
     required this.estimatedVolume,
     this.photoUrl,
     required this.status,
@@ -70,8 +70,8 @@ class GarbageReport {
       longitude: longitude ?? 32.5825,
       addressDescription: json['address_description'] ?? 'Unknown location',
       garbageType: json['garbage_type'] ?? 'mixed',
-      sackCount: _parseSackCount(json['sack_count'], json['estimated_volume']),
-      estimatedVolume: _estimatedVolumeLabel(_parseSackCount(json['sack_count'], json['estimated_volume'])),
+      packageCount: _parsePackageCount(json['package_count'], json['estimated_volume']),
+      estimatedVolume: _estimatedVolumeLabel(_parsePackageCount(json['package_count'], json['estimated_volume'])),
       photoUrl: json['photo_url'],
       status: json['status'] ?? 'pending',
       paymentRequired: json['payment_required'] ?? true,
@@ -153,12 +153,12 @@ class GarbageReport {
     return null;
   }
 
-  static int _parseSackCount(dynamic sackCountRaw, dynamic estimatedVolumeRaw) {
-    if (sackCountRaw is num && sackCountRaw >= 1) {
-      return sackCountRaw.toInt();
+  static int _parsePackageCount(dynamic packageCountRaw, dynamic estimatedVolumeRaw) {
+    if (packageCountRaw is num && packageCountRaw >= 1) {
+      return packageCountRaw.toInt();
     }
 
-    final parsedDirect = int.tryParse(sackCountRaw?.toString() ?? '');
+    final parsedDirect = int.tryParse(packageCountRaw?.toString() ?? '');
     if (parsedDirect != null && parsedDirect >= 1) {
       return parsedDirect;
     }
@@ -173,8 +173,8 @@ class GarbageReport {
     return 1;
   }
 
-  static String _estimatedVolumeLabel(int sacks) {
-    return '$sacks sack${sacks == 1 ? '' : 's'}';
+  static String _estimatedVolumeLabel(int packages) {
+    return '$packages package${packages == 1 ? '' : 's'}';
   }
 
   static double _parseAmount(dynamic amountRaw) {

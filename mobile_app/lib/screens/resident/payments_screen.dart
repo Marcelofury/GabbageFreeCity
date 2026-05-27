@@ -292,7 +292,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Sacks: ${report.sackCount}',
+                                            'Packages: ${report.packageCount}',
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: Colors.grey[600],

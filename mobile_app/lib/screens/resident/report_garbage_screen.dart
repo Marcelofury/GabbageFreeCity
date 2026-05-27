@@ -15,10 +15,7 @@ class ReportGarbageScreen extends StatefulWidget {
 class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
   final MapController _mapController = MapController();
   final _descriptionController = TextEditingController();
-  int _sackCount = 1;
-  static const int _sackPriceUgx = 500;
-
-  int get _calculatedAmount => _sackCount * _sackPriceUgx;
+  int _packageCount = 1;
 
   @override
   void initState() {
@@ -93,7 +90,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
       latitude: locationProvider.currentPosition!.latitude,
       longitude: locationProvider.currentPosition!.longitude,
       addressDescription: _descriptionController.text,
-      sackCount: _sackCount,
+      packageCount: _packageCount,
     );
 
     if (!mounted) return;
@@ -238,48 +235,35 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Number of Sacks',
+                                    'Number of Packages',
                                     style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
-                                  SizedBox(height: 4),
-                                  Text('UGX $_sackPriceUgx per sack'),
                                 ],
                               ),
                             ),
                             IconButton(
-                              onPressed: _sackCount > 1
+                              onPressed: _packageCount > 1
                                   ? () {
                                       setState(() {
-                                        _sackCount -= 1;
+                                        _packageCount -= 1;
                                       });
                                     }
                                   : null,
                               icon: const Icon(Icons.remove_circle_outline),
                             ),
                             Text(
-                              '$_sackCount',
+                              '$_packageCount',
                               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                             ),
                             IconButton(
                               onPressed: () {
                                 setState(() {
-                                  _sackCount += 1;
+                                  _packageCount += 1;
                                 });
                               },
                               icon: const Icon(Icons.add_circle_outline),
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Calculated Fee: UGX $_calculatedAmount',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -296,7 +280,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Text('Submit Report (UGX $_calculatedAmount)'),
+                              : const Text('Submit Report'),
                         ),
                       ),
                     ],

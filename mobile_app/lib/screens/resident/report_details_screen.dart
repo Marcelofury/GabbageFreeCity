@@ -133,7 +133,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           const SizedBox(height: 12),
           _section('Garbage Details', Icons.delete_outline, [
             _row('Type', report['garbageType']?.toString() ?? '-'),
-            _row('Sacks', report['sackCount']?.toString() ?? '-'),
+            _row('Packages', report['packageCount']?.toString() ?? '-'),
             _row('Volume Label', report['volume']?.toString() ?? '-'),
             const SizedBox(height: 8),
             Container(
@@ -363,7 +363,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           children: [
             _row('Receipt #', 'GFC-${report['id'] ?? '-'}'),
             _row('Amount', 'UGX ${report['amount'] ?? '-'}'),
-            _row('Sacks', '${report['sackCount'] ?? '-'}'),
+            _row('Packages', '${report['packageCount'] ?? '-'}'),
             _row('Transaction Ref', report['txRef']?.toString() ?? 'N/A'),
             _row('Address', report['address']?.toString() ?? '-'),
             _row('Date', _formatDateTime(report['lastUpdated'])),
@@ -375,7 +375,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               final text =
                   'Receipt: GFC-${report['id'] ?? '-'}\n'
                   'Amount: UGX ${report['amount'] ?? '-'}\n'
-                  'Sacks: ${report['sackCount'] ?? '-'}\n'
+                  'Packages: ${report['packageCount'] ?? '-'}\n'
                   'Tx Ref: ${report['txRef']?.toString() ?? 'N/A'}\n'
                   'Address: ${report['address']?.toString() ?? '-'}';
               await Clipboard.setData(ClipboardData(text: text));
@@ -465,7 +465,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       'longitude': report.longitude,
       'garbageType': report.garbageType,
       'volume': report.estimatedVolume,
-      'sackCount': report.sackCount,
+      'packageCount': report.packageCount,
       'amount': report.paymentAmount.toStringAsFixed(0),
       'paymentStatus': report.paymentStatus == 'successful' ? 'paid' : 'unpaid',
       'txRef': report.transactionRef ?? 'N/A',

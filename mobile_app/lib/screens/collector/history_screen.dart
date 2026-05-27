@@ -49,9 +49,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       0,
       (sum, item) => sum + _asInt(item['payment_amount']),
     );
-    final totalSacks = history.fold<int>(
+    final totalPackages = history.fold<int>(
       0,
-      (sum, item) => sum + _asInt(item['sack_count']),
+      (sum, item) => sum + _asInt(item['package_count']),
     );
 
     return Scaffold(
@@ -124,8 +124,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                           Expanded(
                             child: _buildStatColumn(
-                              'Sacks',
-                              '$totalSacks',
+                              'Packages',
+                              '$totalPackages',
                               Icons.inventory_2,
                             ),
                           ),
@@ -184,7 +184,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   final item = history[index];
                                   final address = (item['address_description'] ?? 'Unknown location').toString();
                                   final completedAt = _asDate(item['completed_at']);
-                                  final sacks = _asInt(item['sack_count']);
+                                  final packages = _asInt(item['package_count']);
                                   final amount = _asInt(item['payment_amount']);
                                   final residentArea = (item['resident']?['area'] ?? 'Area not provided').toString();
 
@@ -210,7 +210,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                           ),
                                           const SizedBox(height: 4),
-                                          Text('Sacks: $sacks | Area: $residentArea'),
+                                          Text('Packages: $packages | Area: $residentArea'),
                                         ],
                                       ),
                                       trailing: Column(
@@ -293,7 +293,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(height: 16),
             _buildDetailRow('Report ID', '${item['id']}'),
-            _buildDetailRow('Sacks', '${_asInt(item['sack_count'])}'),
+            _buildDetailRow('Packages', '${_asInt(item['package_count'])}'),
             _buildDetailRow('Amount', 'UGX ${_asInt(item['payment_amount'])}'),
             _buildDetailRow(
               'Completed',

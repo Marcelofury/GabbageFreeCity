@@ -120,7 +120,7 @@ class ApiService {
     required double latitude,
     required double longitude,
     required String addressDescription,
-    required int sackCount,
+    required int packageCount,
     String garbageType = 'mixed',
     String? photoUrl,
   }) async {
@@ -131,7 +131,7 @@ class ApiService {
       'latitude': latitude,
       'longitude': longitude,
       'address_description': addressDescription,
-      'sack_count': sackCount,
+      'package_count': packageCount,
       'garbage_type': garbageType,
     };
     
@@ -242,6 +242,67 @@ class ApiService {
     );
 
     return jsonDecode(response.body);
+  }
+
+  /// Get subscription plans
+  Future<Map<String, dynamic>> getSubscriptionPlans() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/subscriptions/plans'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get active subscription for resident
+  Future<Map<String, dynamic>> getMySubscription() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$BASE_URL/subscriptions/my'),
+        headers: headers,
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Purchase subscription (3 months prepaid)
+  Future<Map<String, dynamic>> purchaseSubscription({
+    required String planId,
+    required String phone,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$BASE_URL/subscriptions/purchase'),
+        headers: headers,
+        body: jsonEncode({
+          'plan_id': planId,
+          'phone': phone,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
   }
 
   /// Get nearby reports (for collectors)

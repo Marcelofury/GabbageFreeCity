@@ -61,24 +61,24 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildSection(
               title: 'How It Works',
-              content:
-                  '1. Report garbage pile-ups using the app\n'
-                  '2. Enter sack count and get automatic pricing (UGX 500 per sack)\n'
-                  '3. Pay securely using Mobile Money via MarzPay\n'
+                content:
+                  '1. Choose a subscription plan (1x or 2x weekly collection)\n'
+                  '2. Pay 3 months in advance using Mobile Money via MarzPay\n'
+                  '3. Report collection using package count when needed\n'
                   '4. Collector is assigned and completes with resident QR verification\n'
-                  '5. Track status and receipt from your report details',
+                  '5. Track status and history from your report details',
               icon: Icons.info_outline,
             ),
             const SizedBox(height: 16),
             _buildSection(
-              title: 'Current Collection Pricing',
-              content:
-                  'Rate: UGX 500 per sack\n'
-                  'Examples:\n'
-                  '1 sack = UGX 500\n'
-                  '2 sacks = UGX 1,000\n'
-                  '5 sacks = UGX 2,500\n\n'
-                  'Pricing is automatically calculated in the app before payment.',
+                title: 'Current Subscription Pricing',
+                content:
+                  '1x weekly (4 collections/month): UGX 50,000\n'
+                  '2x weekly (8 collections/month): UGX 80,000\n\n'
+                  '3 months prepaid:\n'
+                  '1x weekly = UGX 150,000\n'
+                  '2x weekly = UGX 240,000\n\n'
+                  'Collections are recorded in packages.',
               icon: Icons.money,
             ),
             const SizedBox(height: 16),

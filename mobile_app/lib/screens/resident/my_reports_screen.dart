@@ -106,7 +106,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Sacks: ${report.sackCount}'),
+                              Text('Packages: ${report.packageCount}'),
                               Text(
                                 'Reported: ${DateFormat.yMMMd().format(report.reportedAt)}',
                               ),
@@ -151,7 +151,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                                 'longitude': report.longitude,
                                 'garbageType': report.garbageType,
                                 'volume': report.estimatedVolume,
-                                'sackCount': report.sackCount,
+                                'packageCount': report.packageCount,
                                 'amount': report.paymentAmount.toStringAsFixed(0),
                                 'paymentStatus': _isPaid(report.paymentStatus) ? 'paid' : 'unpaid',
                                 'txRef': report.transactionRef ?? 'N/A',

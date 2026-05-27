@@ -109,6 +109,15 @@ class ResidentHomeScreen extends StatelessWidget {
                   ),
                   _buildMenuCard(
                     context,
+                    icon: Icons.calendar_month,
+                    title: 'Subscriptions',
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/subscriptions');
+                    },
+                  ),
+                  _buildMenuCard(
+                    context,
                     icon: Icons.info_outline,
                     title: 'About KCCA',
                     color: Colors.purple,
