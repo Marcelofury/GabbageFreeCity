@@ -185,7 +185,7 @@ router.get('/collection-history', authenticateToken, requireUserType('collector'
             .select(`
                 id,
                 address_description,
-                sack_count,
+                package_count,
                 estimated_volume,
                 payment_amount,
                 completed_at,
@@ -315,6 +315,34 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
                 completed_at: new Date().toISOString()
             })
             .eq('id', report_id);
+
+        if (report.subscription_id) {
+            const nowIso = new Date().toISOString();
+            const { data: subscription, error: subscriptionError } = await supabase
+                .from('subscriptions')
+                .select('id, status, remaining_collections, end_date')
+                .eq('id', report.subscription_id)
+                .maybeSingle();
+
+            if (subscriptionError) {
+                throw subscriptionError;
+            }
+
+            if (subscription) {
+                const remaining = Math.max(0, Number(subscription.remaining_collections || 0) - 1);
+                const shouldExpire = remaining <= 0 || (subscription.end_date && subscription.end_date < nowIso);
+
+                await supabase
+                    .from('subscriptions')
+                    .update({
+                        remaining_collections: remaining,
+                        status: shouldExpire ? 'expired' : subscription.status,
+                        last_collection_at: nowIso,
+                        updated_at: nowIso,
+                    })
+                    .eq('id', subscription.id);
+            }
+        }
 
         res.json({
             success: true,

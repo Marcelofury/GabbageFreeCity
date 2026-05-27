@@ -19,6 +19,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const collectorRoutes = require('./routes/collectorRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -81,6 +82,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/collectors', collectorRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {

@@ -36,11 +36,32 @@ const createReportSchema = Joi.object({
     longitude: Joi.number().min(-180).max(180).required(),
     address_description: Joi.string().max(500).required(),
     garbage_type: Joi.string().valid('mixed', 'plastic', 'organic', 'electronic', 'hazardous').default('mixed'),
-    sack_count: Joi.number().integer().min(1).max(100).required(),
+    package_count: Joi.number().integer().min(1).max(100).required(),
     photo_url: Joi.string().uri().allow('', null).optional()
 });
 
 const SUCCESSFUL_PAYMENT_STATUSES = ['successful', 'completed', 'paid', 'success'];
+
+async function getActiveSubscription(residentId) {
+    const nowIso = new Date().toISOString();
+
+    const { data, error } = await supabase
+        .from('subscriptions')
+        .select('id, status, end_date, remaining_collections')
+        .eq('resident_id', residentId)
+        .eq('status', 'active')
+        .gte('end_date', nowIso)
+        .gt('remaining_collections', 0)
+        .order('end_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data || null;
+}
 
 function derivePaymentStatus(report) {
     const paymentStatuses = (report?.payments || [])
@@ -77,9 +98,15 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             });
         }
 
-        const { latitude, longitude, address_description, garbage_type, sack_count, photo_url } = value;
-        const unitPrice = parseFloat(process.env.SACK_PRICE_UGX || 500);
-        const paymentAmount = sack_count * unitPrice;
+        const { latitude, longitude, address_description, garbage_type, package_count, photo_url } = value;
+
+        const activeSubscription = await getActiveSubscription(req.user.id);
+        if (!activeSubscription) {
+            return res.status(403).json({
+                success: false,
+                message: 'Active subscription required before reporting garbage.',
+            });
+        }
 
         // Create report
         const reportData = {
@@ -87,12 +114,14 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             location: `POINT(${longitude} ${latitude})`,
             address_description,
             garbage_type,
-            sack_count,
-            estimated_volume: `${sack_count} sack${sack_count === 1 ? '' : 's'}`,
+            package_count,
+            estimated_volume: `${package_count} package${package_count === 1 ? '' : 's'}`,
             photo_url,
             status: 'pending',
-            payment_required: true,
-            payment_amount: paymentAmount,
+            payment_required: false,
+            payment_amount: 0,
+            payment_status: 'completed',
+            subscription_id: activeSubscription.id,
             reported_at: new Date().toISOString()
         };
 
@@ -111,7 +140,7 @@ router.post('/', authenticateToken, requireUserType('resident'), async (req, res
             message: 'Garbage report created successfully',
             data: {
                 report_id: report.id,
-                sack_count: report.sack_count,
+                package_count: report.package_count,
                 status: report.status,
                 payment_amount: report.payment_amount,
                 currency: 'UGX'
@@ -338,14 +367,28 @@ router.patch('/:id/assign', authenticateToken, requireUserType('collector'), asy
             });
         }
 
-        // Check if payment is successful (support multiple normalized success variants)
-        const hasSuccessfulPayment = (report.payments || []).some((payment) =>
-            SUCCESSFUL_PAYMENT_STATUSES.includes(String(payment?.payment_status || '').toLowerCase())
-        );
-        if (report.payment_required !== false && !hasSuccessfulPayment) {
+        if (!report.subscription_id) {
             return res.status(400).json({
                 success: false,
-                message: 'Payment not completed for this report'
+                message: 'Active subscription required for collection assignment'
+            });
+        }
+
+        const { data: subscription, error: subscriptionError } = await supabase
+            .from('subscriptions')
+            .select('status, end_date, remaining_collections')
+            .eq('id', report.subscription_id)
+            .maybeSingle();
+
+        if (subscriptionError) {
+            throw subscriptionError;
+        }
+
+        const nowIso = new Date().toISOString();
+        if (!subscription || subscription.status !== 'active' || subscription.end_date < nowIso || subscription.remaining_collections <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Subscription is not active for this report'
             });
         }
 

@@ -51,6 +51,12 @@ function formatSmsTemplate(template, variables) {
     return String(template || '').replace(/\{(\w+)\}/g, (_, key) => String(variables?.[key] ?? ''));
 }
 
+function addMonths(date, months) {
+    const result = new Date(date.getTime());
+    result.setMonth(result.getMonth() + Number(months || 0));
+    return result;
+}
+
 function buildPaymentSmsMessage({ success, name, amount }) {
     const successTemplate = process.env.SMS_PAYMENT_SUCCESS ||
         'Webale nyo {name}! Payment of UGX {amount} received. Collector assigned soon. -KCCA GFC';
@@ -109,6 +115,105 @@ async function notifyPaymentTransition({
         },
         sendSms: isSuccess || isFailed,
     });
+}
+
+async function notifySubscriptionTransition({ residentId, subscriptionId, newPaymentStatus, amount, planName }) {
+    if (!residentId || !subscriptionId) {
+        return;
+    }
+
+    const isSuccess = newPaymentStatus === 'successful';
+    const isFailed = newPaymentStatus === 'failed';
+
+    const title = isSuccess ? 'Subscription activated' : isFailed ? 'Subscription payment failed' : 'Subscription payment update';
+    const message = isSuccess
+        ? `Your ${planName || 'subscription'} is active. UGX ${Number(amount || 0).toFixed(0)} received.`
+        : isFailed
+            ? `Subscription payment of UGX ${Number(amount || 0).toFixed(0)} failed. Please try again.`
+            : `Subscription payment status changed to ${newPaymentStatus}.`;
+
+    await createNotification({
+        userId: residentId,
+        title,
+        message,
+        type: 'payment',
+        data: {
+            subscription_id: subscriptionId,
+            payment_status: newPaymentStatus,
+        },
+        sendSms: isSuccess || isFailed,
+    });
+}
+
+async function updateSubscriptionFromPayment(subscriptionId, newPaymentStatus, amount) {
+    if (!subscriptionId) {
+        return null;
+    }
+
+    const { data: subscription, error } = await supabase
+        .from('subscriptions')
+        .select('id, resident_id, status, start_date, end_date, total_collections, remaining_collections, plan:subscription_plans(prepay_months, monthly_collections, name)')
+        .eq('id', subscriptionId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    if (!subscription) {
+        return null;
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    let status = subscription.status;
+    const prepayMonths = Number(subscription.plan?.prepay_months || 3);
+    const monthlyCollections = Number(subscription.plan?.monthly_collections || 0);
+    const totalCollections = monthlyCollections * prepayMonths;
+
+    if (newPaymentStatus === 'successful') {
+        status = 'active';
+    } else if (newPaymentStatus === 'failed') {
+        status = 'cancelled';
+    } else {
+        status = 'pending';
+    }
+
+    const startDate = subscription.start_date || (status === 'active' ? nowIso : null);
+    const endDate = startDate
+        ? (subscription.end_date || addMonths(new Date(startDate), prepayMonths).toISOString())
+        : subscription.end_date;
+    const remainingCollections = subscription.remaining_collections > 0
+        ? subscription.remaining_collections
+        : totalCollections;
+
+    const { data: updated, error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+            status,
+            start_date: startDate,
+            end_date: endDate,
+            total_collections: totalCollections || subscription.total_collections,
+            remaining_collections: remainingCollections,
+            updated_at: nowIso,
+        })
+        .eq('id', subscriptionId)
+        .select('id, resident_id, status')
+        .single();
+
+    if (updateError) {
+        throw updateError;
+    }
+
+    await notifySubscriptionTransition({
+        residentId: subscription.resident_id,
+        subscriptionId,
+        newPaymentStatus,
+        amount,
+        planName: subscription.plan?.name,
+    });
+
+    return updated;
 }
 
 function extractLookupPayload(payload) {
@@ -519,19 +624,23 @@ async function handleMarzpayCallback(req, res, next) {
 
         const { data: paymentRow } = await supabase
             .from('payments')
-            .select('resident_id, report_id, amount')
+            .select('resident_id, report_id, subscription_id, amount')
             .eq('transaction_ref', transactionRef)
             .maybeSingle();
 
-        await notifyPaymentTransition({
-            residentId: paymentRow?.resident_id,
-            reportId: paymentRow?.report_id,
-            transactionRef,
-            providerRef,
-            amount: paymentRow?.amount,
-            newPaymentStatus: transition.new_payment_status,
-            previousPaymentStatus: transition.previous_payment_status,
-        });
+        if (paymentRow?.subscription_id) {
+            await updateSubscriptionFromPayment(paymentRow.subscription_id, transition.new_payment_status, paymentRow.amount);
+        } else {
+            await notifyPaymentTransition({
+                residentId: paymentRow?.resident_id,
+                reportId: paymentRow?.report_id,
+                transactionRef,
+                providerRef,
+                amount: paymentRow?.amount,
+                newPaymentStatus: transition.new_payment_status,
+                previousPaymentStatus: transition.previous_payment_status,
+            });
+        }
 
         return res.json({
             success: true,
@@ -566,7 +675,7 @@ async function reconcileMarzpayPayment(req, res) {
     try {
         let paymentQuery = supabase
             .from('payments')
-            .select('id, report_id, resident_id, amount, transaction_ref, flw_ref, transaction_id');
+            .select('id, report_id, subscription_id, resident_id, amount, transaction_ref, flw_ref, transaction_id');
 
         if (value.transaction_ref) {
             paymentQuery = paymentQuery.or(`transaction_ref.eq.${value.transaction_ref},flw_ref.eq.${value.transaction_ref}`);
@@ -618,6 +727,10 @@ async function reconcileMarzpayPayment(req, res) {
             return res.status(404).json({ success: false, message: 'Payment row exists but transition could not be applied' });
         }
 
+        if (payment.subscription_id) {
+            await updateSubscriptionFromPayment(payment.subscription_id, transition.new_payment_status, payment.amount);
+        }
+
         return res.json({
             success: true,
             message: 'Payment reconciliation completed',
@@ -653,7 +766,7 @@ async function syncPaymentStatus(req, res) {
     try {
         let paymentQuery = supabase
             .from('payments')
-            .select('id, report_id, resident_id, transaction_ref, flw_ref, transaction_id')
+            .select('id, report_id, subscription_id, resident_id, transaction_ref, flw_ref, transaction_id')
             .order('created_at', { ascending: false })
             .limit(1);
 
@@ -718,15 +831,19 @@ async function syncPaymentStatus(req, res) {
             return res.status(404).json({ success: false, message: 'Payment transition not found' });
         }
 
-        await notifyPaymentTransition({
-            residentId: payment.resident_id,
-            reportId: transition.report_id,
-            transactionRef: effectiveTransactionRef,
-            providerRef: extracted.providerRef || payment.transaction_id || null,
-            amount: null,
-            newPaymentStatus: transition.new_payment_status,
-            previousPaymentStatus: transition.previous_payment_status,
-        });
+        if (payment.subscription_id) {
+            await updateSubscriptionFromPayment(payment.subscription_id, transition.new_payment_status, null);
+        } else {
+            await notifyPaymentTransition({
+                residentId: payment.resident_id,
+                reportId: transition.report_id,
+                transactionRef: effectiveTransactionRef,
+                providerRef: extracted.providerRef || payment.transaction_id || null,
+                amount: null,
+                newPaymentStatus: transition.new_payment_status,
+                previousPaymentStatus: transition.previous_payment_status,
+            });
+        }
 
         return res.json({
             success: true,
