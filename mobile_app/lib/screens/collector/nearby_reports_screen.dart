@@ -633,7 +633,7 @@ class _NearbyReportsScreenState extends State<NearbyReportsScreen> {
                       ),
                       Text(
                         _distanceLabel(report, locationProvider),
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

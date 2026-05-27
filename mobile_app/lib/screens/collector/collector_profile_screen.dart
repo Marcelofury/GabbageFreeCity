@@ -147,7 +147,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Call support on $_supportPhone')),
+      const SnackBar(content: Text('Call support on $_supportPhone')),
     );
   }
 
@@ -271,14 +271,14 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
           ListTile(
             leading: const Icon(Icons.bug_report_outlined),
             title: const Text('Report Issue'),
-            subtitle: Text('Email: $_supportEmail'),
+            subtitle: const Text('Email: $_supportEmail'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _reportIssue,
           ),
           ListTile(
             leading: const Icon(Icons.support_agent),
             title: const Text('Contact Support'),
-            subtitle: Text('Call: $_supportPhone'),
+            subtitle: const Text('Call: $_supportPhone'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _contactSupport,
           ),
