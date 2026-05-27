@@ -48,6 +48,49 @@ CREATE INDEX idx_users_type ON users(user_type);
 CREATE INDEX idx_users_is_admin ON users(is_admin);
 
 -- =====================================================
+-- SUBSCRIPTION PLANS TABLE
+-- Prepaid garbage collection subscription plans
+-- =====================================================
+CREATE TABLE subscription_plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(80) NOT NULL,
+    weekly_collections INTEGER NOT NULL CHECK (weekly_collections >= 1),
+    monthly_collections INTEGER NOT NULL CHECK (monthly_collections >= 1),
+    monthly_price_ugx DECIMAL(10, 2) NOT NULL CHECK (monthly_price_ugx >= 0),
+    prepay_months INTEGER NOT NULL DEFAULT 3 CHECK (prepay_months >= 1),
+    prepay_price_ugx DECIMAL(10, 2) NOT NULL CHECK (prepay_price_ugx >= 0),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_subscription_plans_active ON subscription_plans(is_active);
+
+-- =====================================================
+-- SUBSCRIPTIONS TABLE
+-- Tracks resident subscription lifecycle and remaining collections
+-- =====================================================
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    resident_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES subscription_plans(id),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (
+        status IN ('pending', 'active', 'expired', 'cancelled')
+    ),
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE,
+    total_collections INTEGER NOT NULL DEFAULT 0 CHECK (total_collections >= 0),
+    remaining_collections INTEGER NOT NULL DEFAULT 0 CHECK (remaining_collections >= 0),
+    last_collection_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_subscriptions_resident ON subscriptions(resident_id);
+CREATE INDEX idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX idx_subscriptions_end_date ON subscriptions(end_date);
+
+-- =====================================================
 -- GARBAGE_REPORTS TABLE
 -- Stores garbage pile-up reports from residents
 -- =====================================================
@@ -61,8 +104,8 @@ CREATE TABLE garbage_reports (
     
     -- Report details
     garbage_type VARCHAR(50) DEFAULT 'mixed', -- mixed, plastic, organic, etc.
-    sack_count INTEGER NOT NULL DEFAULT 1 CHECK (sack_count >= 1),
-    estimated_volume VARCHAR(20), -- small, medium, large
+    package_count INTEGER NOT NULL DEFAULT 1 CHECK (package_count >= 1),
+    estimated_volume VARCHAR(20), -- e.g., "1 package"
     photo_url TEXT, -- Optional photo evidence
     description TEXT,
     
@@ -74,7 +117,7 @@ CREATE TABLE garbage_reports (
     
     -- Payment tracking
     payment_required BOOLEAN DEFAULT true,
-    payment_amount DECIMAL(10, 2) DEFAULT 5000.00, -- Default UGX 5,000
+    payment_amount DECIMAL(10, 2) DEFAULT 5000.00, -- Default UGX 5,000 (legacy per-report)
     payment_status VARCHAR(20) DEFAULT 'pending' CHECK (
         payment_status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')
     ),
@@ -84,6 +127,7 @@ CREATE TABLE garbage_reports (
     assigned_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
     
+    subscription_id UUID REFERENCES subscriptions(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -100,7 +144,8 @@ CREATE INDEX idx_garbage_reports_collector ON garbage_reports(assigned_collector
 -- =====================================================
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    report_id UUID NOT NULL REFERENCES garbage_reports(id) ON DELETE CASCADE,
+    report_id UUID REFERENCES garbage_reports(id) ON DELETE CASCADE,
+    subscription_id UUID REFERENCES subscriptions(id) ON DELETE CASCADE,
     resident_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     -- Transaction details
@@ -114,6 +159,9 @@ CREATE TABLE payments (
     currency VARCHAR(3) DEFAULT 'UGX',
     payment_method VARCHAR(50) DEFAULT 'marzpay', -- marzpay, mobile_money, card
     phone_number VARCHAR(15), -- Mobile Money number
+    payment_purpose VARCHAR(20) DEFAULT 'report' CHECK (
+        payment_purpose IN ('report', 'subscription')
+    ),
     
     -- Status tracking
     payment_status VARCHAR(20) DEFAULT 'pending' CHECK (
@@ -132,7 +180,12 @@ CREATE TABLE payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+ALTER TABLE payments
+    ADD CONSTRAINT payments_report_or_subscription_check
+    CHECK (report_id IS NOT NULL OR subscription_id IS NOT NULL);
+
 CREATE INDEX idx_payments_report ON payments(report_id);
+CREATE INDEX idx_payments_subscription ON payments(subscription_id);
 CREATE INDEX idx_payments_resident ON payments(resident_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);
 CREATE INDEX idx_payments_transaction_id ON payments(transaction_id);
