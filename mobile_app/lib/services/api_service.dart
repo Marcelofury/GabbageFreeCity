@@ -431,6 +431,34 @@ class ApiService {
     }
   }
 
+  /// Get resident completed collection history
+  Future<Map<String, dynamic>> getResidentCollectionHistory({
+    String period = 'month',
+  }) async {
+    try {
+      final headers = await _getHeaders();
+
+      final response = await http.get(
+        Uri.parse('$BASE_URL/garbage-reports/my-collections?period=$period'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+
+      return {
+        'success': false,
+        'message': 'Failed to fetch resident collections: ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Update collector location
   Future<Map<String, dynamic>> updateCollectorLocation({
     required double latitude,
@@ -592,6 +620,34 @@ class ApiService {
         Uri.parse('$BASE_URL/admin/dashboard'),
         headers: headers,
       );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get admin collection history with proof details
+  Future<Map<String, dynamic>> getAdminCollections({
+    String period = 'month',
+    String? collectorId,
+    String? area,
+    bool? outOfSchedule,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      final queryParams = <String, String>{
+        'period': period,
+        if (collectorId != null && collectorId.isNotEmpty) 'collector_id': collectorId,
+        if (area != null && area.isNotEmpty) 'area': area,
+        if (outOfSchedule != null) 'out_of_schedule': outOfSchedule.toString(),
+      };
+
+      final uri = Uri.parse('$BASE_URL/admin/collections').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: headers);
 
       return jsonDecode(response.body);
     } catch (e) {
