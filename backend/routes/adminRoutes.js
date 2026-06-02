@@ -221,6 +221,116 @@ router.get('/collectors', async (req, res, next) => {
 });
 
 /**
+ * GET /api/admin/collections
+ * Admin collection history with proof details
+ */
+router.get('/collections', async (req, res, next) => {
+    try {
+        const period = String(req.query.period || 'month').toLowerCase();
+        const validPeriods = ['week', 'month', 'all'];
+        const collectorId = String(req.query.collector_id || '').trim();
+        const area = String(req.query.area || '').trim().toLowerCase();
+        const outOfSchedule = String(req.query.out_of_schedule || '').trim().toLowerCase();
+
+        if (!validPeriods.includes(period)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid period filter. Use week, month, or all.',
+            });
+        }
+
+        let query = supabase
+            .from('garbage_reports')
+            .select(`
+                id,
+                address_description,
+                package_count,
+                estimated_volume,
+                payment_amount,
+                completed_at,
+                resident:users!garbage_reports_resident_id_fkey (
+                    id,
+                    full_name,
+                    phone_number,
+                    area
+                ),
+                collector:users!garbage_reports_assigned_collector_id_fkey (
+                    id,
+                    full_name,
+                    phone_number
+                ),
+                collection_log:collection_logs!collection_logs_report_id_fkey (
+                    id,
+                    qr_code_scanned,
+                    qr_scan_timestamp,
+                    scheduled_days,
+                    out_of_schedule,
+                    collection_location,
+                    distance_from_report,
+                    actual_volume,
+                    notes,
+                    photo_url,
+                    started_at,
+                    completed_at
+                )
+            `)
+            .eq('status', 'completed')
+            .order('completed_at', { ascending: false });
+
+        if (collectorId) {
+            query = query.eq('assigned_collector_id', collectorId);
+        }
+
+        if (period === 'week') {
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            query = query.gte('completed_at', weekAgo.toISOString());
+        } else if (period === 'month') {
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            query = query.gte('completed_at', monthAgo.toISOString());
+        }
+
+        const { data: reports, error } = await query;
+        if (error) {
+            throw error;
+        }
+
+        let normalizedReports = (reports || []).map((report) => {
+            const logArray = Array.isArray(report.collection_log) ? report.collection_log : [];
+            return {
+                ...report,
+                collection_log: logArray[0] || null,
+            };
+        });
+
+        if (area) {
+            normalizedReports = normalizedReports.filter((report) => {
+                const residentArea = String(report.resident?.area || '').toLowerCase();
+                return residentArea.includes(area);
+            });
+        }
+
+        if (outOfSchedule === 'true' || outOfSchedule === 'false') {
+            const flag = outOfSchedule === 'true';
+            normalizedReports = normalizedReports.filter(
+                (report) => (report.collection_log?.out_of_schedule ?? false) === flag
+            );
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                period,
+                reports: normalizedReports,
+            },
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+/**
  * PATCH /api/admin/collectors/:id/status
  * Activate or deactivate collector account
  */
