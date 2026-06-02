@@ -29,6 +29,7 @@ import 'screens/collector/collector_directions_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/admin_collectors_screen.dart';
+import 'screens/admin/admin_collections_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/admin_provider.dart';
 import 'providers/collector_provider.dart';
@@ -132,6 +133,7 @@ class GarbageFreeCityApp extends StatelessWidget {
           '/admin-home': (context) => const AdminHomeScreen(),
           '/admin-dashboard': (context) => const AdminDashboardScreen(),
           '/admin-collectors': (context) => const AdminCollectorsScreen(),
+          '/admin-collections': (context) => const AdminCollectionsScreen(),
         },
       ),
     );
