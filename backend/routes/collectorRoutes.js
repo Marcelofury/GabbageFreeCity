@@ -48,6 +48,42 @@ function parseCoordinatesFromLocation(locationValue) {
     return { latitude: null, longitude: null };
 }
 
+function normalizeWeeklyCollections(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function scheduleForWeeklyCollections(weeklyCollections) {
+    if (weeklyCollections === 1) {
+        return { label: 'Tuesday', days: [2] };
+    }
+
+    if (weeklyCollections === 2) {
+        return { label: 'Tuesday, Thursday', days: [2, 4] };
+    }
+
+    return { label: 'Custom', days: [] };
+}
+
+async function getScheduleForSubscription(subscriptionId) {
+    if (!subscriptionId) {
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from('subscriptions')
+        .select('id, plan:subscription_plans(weekly_collections)')
+        .eq('id', subscriptionId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    const weeklyCollections = normalizeWeeklyCollections(data?.plan?.weekly_collections);
+    return weeklyCollections == null ? null : scheduleForWeeklyCollections(weeklyCollections);
+}
+
 async function attachReportCoordinates(reports) {
     if (!Array.isArray(reports) || reports.length === 0) {
         return [];
@@ -193,6 +229,20 @@ router.get('/collection-history', authenticateToken, requireUserType('collector'
                     full_name,
                     phone_number,
                     area
+                ),
+                collection_log:collection_logs!collection_logs_report_id_fkey (
+                    id,
+                    qr_code_scanned,
+                    qr_scan_timestamp,
+                    scheduled_days,
+                    out_of_schedule,
+                    collection_location,
+                    distance_from_report,
+                    actual_volume,
+                    notes,
+                    photo_url,
+                    started_at,
+                    completed_at
                 )
             `)
             .eq('assigned_collector_id', req.user.id)
@@ -214,11 +264,19 @@ router.get('/collection-history', authenticateToken, requireUserType('collector'
             throw error;
         }
 
+        const normalizedReports = (reports || []).map((report) => {
+            const logArray = Array.isArray(report.collection_log) ? report.collection_log : [];
+            return {
+                ...report,
+                collection_log: logArray[0] || null,
+            };
+        });
+
         return res.json({
             success: true,
             data: {
                 period,
-                reports: reports || [],
+                reports: normalizedReports,
             },
         });
     } catch (error) {
@@ -288,6 +346,12 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
             });
         }
 
+        const scheduleInfo = await getScheduleForSubscription(report.subscription_id);
+        const scheduleLabel = scheduleInfo?.label ?? null;
+        const scheduleDays = scheduleInfo?.days ?? [];
+        const completionDay = new Date().getDay();
+        const outOfSchedule = scheduleDays.length > 0 && !scheduleDays.includes(completionDay);
+
         // Create collection log
         const { data: collectionLog, error: logError } = await supabase
             .from('collection_logs')
@@ -297,6 +361,8 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
                 qr_code_scanned: !!qr_code_data,
                 qr_scan_timestamp: qr_code_data ? new Date().toISOString() : null,
                 collection_location: `POINT(${longitude} ${latitude})`,
+                scheduled_days: scheduleLabel,
+                out_of_schedule: outOfSchedule,
                 started_at: new Date().toISOString(),
                 completed_at: new Date().toISOString()
             }])
@@ -347,7 +413,13 @@ router.post('/verify-collection', authenticateToken, requireUserType('collector'
         res.json({
             success: true,
             message: 'Collection verified successfully',
-            data: { collection_log: collectionLog }
+            data: {
+                collection_log: collectionLog,
+                schedule: {
+                    scheduled_days: scheduleLabel,
+                    out_of_schedule: outOfSchedule,
+                },
+            }
         });
 
         await createNotification({
