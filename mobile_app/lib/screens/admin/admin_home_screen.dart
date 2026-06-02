@@ -95,6 +95,13 @@ class AdminHomeScreen extends StatelessWidget {
                     color: Colors.indigo,
                     onTap: () => Navigator.pushNamed(context, '/admin-collectors'),
                   ),
+                  _buildMenuCard(
+                    context,
+                    icon: Icons.fact_check,
+                    title: 'Collections',
+                    color: Colors.deepOrange,
+                    onTap: () => Navigator.pushNamed(context, '/admin-collections'),
+                  ),
                 ],
               ),
             ),
