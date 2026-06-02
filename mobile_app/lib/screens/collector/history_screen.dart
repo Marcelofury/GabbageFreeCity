@@ -187,6 +187,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   final packages = _asInt(item['package_count']);
                                   final amount = _asInt(item['payment_amount']);
                                   final residentArea = (item['resident']?['area'] ?? 'Area not provided').toString();
+                                  final log = item['collection_log'] as Map<String, dynamic>?;
+                                  final scheduledDays = (log?['scheduled_days'] ?? 'Custom').toString();
+                                  final outOfSchedule = log?['out_of_schedule'] == true;
+                                  final qrScanned = log?['qr_code_scanned'] == true;
 
                                   return Card(
                                     margin: const EdgeInsets.only(bottom: 12),
@@ -211,6 +215,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text('Packages: $packages | Area: $residentArea'),
+                                          Text('Schedule: $scheduledDays | QR: ${qrScanned ? 'Yes' : 'No'}'),
+                                          if (outOfSchedule)
+                                            const Text(
+                                              'Completed outside schedule',
+                                              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600),
+                                            ),
                                         ],
                                       ),
                                       trailing: Column(
@@ -270,6 +280,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _showCollectionDetails(BuildContext context, Map<String, dynamic> item) {
     final completedAt = _asDate(item['completed_at']);
+    final log = item['collection_log'] as Map<String, dynamic>?;
+    final scheduledDays = (log?['scheduled_days'] ?? 'Custom').toString();
+    final outOfSchedule = log?['out_of_schedule'] == true;
+    final qrScanned = log?['qr_code_scanned'] == true;
 
     showModalBottomSheet(
       context: context,
@@ -295,6 +309,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             _buildDetailRow('Report ID', '${item['id']}'),
             _buildDetailRow('Packages', '${_asInt(item['package_count'])}'),
             _buildDetailRow('Amount', 'UGX ${_asInt(item['payment_amount'])}'),
+            _buildDetailRow('Schedule', scheduledDays),
+            _buildDetailRow('QR Scanned', qrScanned ? 'Yes' : 'No'),
+            _buildDetailRow('Out of Schedule', outOfSchedule ? 'Yes' : 'No'),
             _buildDetailRow(
               'Completed',
               completedAt != null
