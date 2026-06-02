@@ -10,9 +10,11 @@ class AdminProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String _statusFilter = 'all';
+  String _collectionPeriod = 'month';
 
   List<Map<String, dynamic>> _collectors = [];
   List<Map<String, dynamic>> _transactions = [];
+  List<Map<String, dynamic>> _collections = [];
   Map<String, dynamic> _wallet = {};
   Map<String, dynamic> _dashboard = {
     'active_collectors': 0,
@@ -37,8 +39,10 @@ class AdminProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get statusFilter => _statusFilter;
+  String get collectionPeriod => _collectionPeriod;
   List<Map<String, dynamic>> get collectors => _collectors;
   List<Map<String, dynamic>> get transactions => _transactions;
+  List<Map<String, dynamic>> get collections => _collections;
   Map<String, dynamic> get wallet => _wallet;
   Map<String, dynamic> get dashboard => _dashboard;
 
@@ -119,6 +123,44 @@ class AdminProvider with ChangeNotifier {
   Future<void> setStatusFilter(String filter) async {
     _statusFilter = filter;
     await fetchCollectors();
+  }
+
+  Future<void> fetchCollections({
+    String? period,
+    String? collectorId,
+    String? area,
+    bool? outOfSchedule,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    if (period != null) {
+      _collectionPeriod = period;
+    }
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getAdminCollections(
+        period: _collectionPeriod,
+        collectorId: collectorId,
+        area: area,
+        outOfSchedule: outOfSchedule,
+      );
+
+      if (response['success'] == true) {
+        final rows = (response['data']?['reports'] as List?) ?? [];
+        _collections = rows
+            .whereType<Map<String, dynamic>>()
+            .map(Map<String, dynamic>.from)
+            .toList();
+      } else {
+        _error = response['message']?.toString() ?? 'Failed to load collections';
+      }
+    } catch (e) {
+      _error = e.toString();
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<bool> updateCollectorStatus({
