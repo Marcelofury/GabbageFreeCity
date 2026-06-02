@@ -216,13 +216,16 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     if (!mounted) return;
 
     if (response['success'] == true) {
-      _showSuccess(reportId);
+      final schedule = response['data']?['schedule'] as Map<String, dynamic>?;
+      final log = response['data']?['collection_log'] as Map<String, dynamic>?;
+      final outOfSchedule = schedule?['out_of_schedule'] == true || log?['out_of_schedule'] == true;
+      _showSuccess(reportId, outOfSchedule: outOfSchedule);
     } else {
       _showFailure(response['message']?.toString() ?? 'Verification failed');
     }
   }
 
-  void _showSuccess(String reportId) {
+  void _showSuccess(String reportId, {required bool outOfSchedule}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -234,7 +237,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             Text('Collection Verified'),
           ],
         ),
-        content: Text('Report ID: $reportId\nCollection was verified successfully.'),
+        content: Text(
+          outOfSchedule
+              ? 'Report ID: $reportId\nCollection verified (outside scheduled day).'
+              : 'Report ID: $reportId\nCollection was verified successfully.',
+        ),
         actions: [
           TextButton(
             onPressed: () {
