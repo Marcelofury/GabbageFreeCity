@@ -230,6 +230,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => Navigator.pushNamed(context, '/admin-collectors'),
               ),
             ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.fact_check),
+                title: const Text('Collections Proof'),
+                subtitle: const Text('Review QR-verified collection records'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pushNamed(context, '/admin-collections'),
+              ),
+            ),
           ],
         ),
       ),
