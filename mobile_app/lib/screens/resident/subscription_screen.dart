@@ -14,6 +14,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String? _error;
   Map<String, dynamic>? _activeSubscription;
   List<dynamic> _plans = [];
+  List<Map<String, dynamic>> _collectionHistory = [];
+  String _historyPeriod = 'month';
+  bool _isLoadingHistory = false;
 
   @override
   void initState() {
@@ -30,6 +33,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     try {
       final plansResponse = await _apiService.getSubscriptionPlans();
       final subscriptionResponse = await _apiService.getMySubscription();
+      final historyResponse = await _apiService.getResidentCollectionHistory(period: _historyPeriod);
 
       if (!mounted) return;
 
@@ -41,9 +45,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         throw Exception(subscriptionResponse['message'] ?? 'Failed to load subscription');
       }
 
+      if (historyResponse['success'] != true) {
+        throw Exception(historyResponse['message'] ?? 'Failed to load collection history');
+      }
+
       setState(() {
         _plans = (plansResponse['data']?['plans'] as List?) ?? [];
         _activeSubscription = subscriptionResponse['data']?['subscription'];
+        final rows = (historyResponse['data']?['reports'] as List?) ?? [];
+        _collectionHistory = rows
+            .whereType<Map<String, dynamic>>()
+            .map(Map<String, dynamic>.from)
+            .toList();
       });
     } catch (e) {
       setState(() {
@@ -56,6 +69,53 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadHistory({String? period}) async {
+    setState(() {
+      _isLoadingHistory = true;
+      if (period != null) {
+        _historyPeriod = period;
+      }
+    });
+
+    try {
+      final response = await _apiService.getResidentCollectionHistory(period: _historyPeriod);
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        final rows = (response['data']?['reports'] as List?) ?? [];
+        setState(() {
+          _collectionHistory = rows
+              .whereType<Map<String, dynamic>>()
+              .map(Map<String, dynamic>.from)
+              .toList();
+        });
+      } else {
+        throw Exception(response['message'] ?? 'Failed to load collection history');
+      }
+    } catch (_) {
+      // Leave the last successful history list visible.
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingHistory = false);
+      }
+    }
+  }
+
+  String _scheduleLabelFromWeekly(dynamic weekly) {
+    final weeklyInt = int.tryParse(weekly?.toString() ?? '');
+    if (weeklyInt == 1) return 'Tuesday';
+    if (weeklyInt == 2) return 'Tuesday, Thursday';
+    return 'Custom';
+  }
+
+  String _formatDate(dynamic value) {
+    final date = DateTime.tryParse(value?.toString() ?? '');
+    if (date == null) return '-';
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
   }
 
   Future<void> _purchasePlan(Map<String, dynamic> plan) async {
@@ -130,6 +190,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final plan = _activeSubscription?['plan'] as Map<String, dynamic>?;
     final endDate = _activeSubscription?['end_date']?.toString() ?? '-';
     final remaining = _activeSubscription?['remaining_collections']?.toString() ?? '0';
+    final scheduleLabel = _scheduleLabelFromWeekly(plan?['weekly_collections']);
 
     return Card(
       elevation: 2,
@@ -148,6 +209,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text('Remaining collections: $remaining'),
             const SizedBox(height: 6),
             Text('Expires: $endDate'),
+            const SizedBox(height: 6),
+            Text('Scheduled days: $scheduleLabel'),
           ],
         ),
       ),
@@ -161,6 +224,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final monthlyPrice = plan['monthly_price_ugx']?.toString() ?? '-';
     final prepayMonths = plan['prepay_months']?.toString() ?? '3';
     final prepayPrice = plan['prepay_price_ugx']?.toString() ?? '-';
+    final scheduleLabel = _scheduleLabelFromWeekly(plan['weekly_collections']);
 
     return Card(
       elevation: 1,
@@ -179,6 +243,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             Text('UGX $monthlyPrice per month'),
             const SizedBox(height: 6),
             Text('$prepayMonths months prepaid: UGX $prepayPrice'),
+            const SizedBox(height: 6),
+            Text('Scheduled days: $scheduleLabel'),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -231,6 +297,82 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   children: [
                     _buildActiveCard(),
                     if (_activeSubscription != null) const SizedBox(height: 16),
+                    if (_activeSubscription != null) ...[
+                      const Text(
+                        'Collection Proof',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            const Text('Filter: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('This Week'),
+                              selected: _historyPeriod == 'week',
+                              onSelected: (_) => _loadHistory(period: 'week'),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('This Month'),
+                              selected: _historyPeriod == 'month',
+                              onSelected: (_) => _loadHistory(period: 'month'),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('All Time'),
+                              selected: _historyPeriod == 'all',
+                              onSelected: (_) => _loadHistory(period: 'all'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_isLoadingHistory)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_collectionHistory.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text('No completed collections for this filter.'),
+                        )
+                      else
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                            columns: const [
+                              DataColumn(label: Text('Date')),
+                              DataColumn(label: Text('Report ID')),
+                              DataColumn(label: Text('Collector')),
+                              DataColumn(label: Text('Schedule')),
+                              DataColumn(label: Text('QR')),
+                              DataColumn(label: Text('Status')),
+                            ],
+                            rows: _collectionHistory.map((item) {
+                              final log = item['collection_log'] as Map<String, dynamic>?;
+                              final collector = item['assigned_collector'] as Map<String, dynamic>?;
+                              final schedule = (log?['scheduled_days'] ?? 'Custom').toString();
+                              final qrScanned = log?['qr_code_scanned'] == true ? 'Yes' : 'No';
+                              final outOfSchedule = log?['out_of_schedule'] == true;
+                              return DataRow(
+                                cells: [
+                                  DataCell(Text(_formatDate(item['completed_at']))),
+                                  DataCell(Text(item['id']?.toString() ?? '-')),
+                                  DataCell(Text(collector?['full_name']?.toString() ?? '-')),
+                                  DataCell(Text(schedule)),
+                                  DataCell(Text(qrScanned)),
+                                  DataCell(Text(outOfSchedule ? 'Out of schedule' : 'Completed')),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                    ],
                     const Text(
                       'Plans',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
