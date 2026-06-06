@@ -215,8 +215,8 @@ INSERT INTO subscription_plans (
 )
 SELECT * FROM (
     VALUES
-        ('1x weekly package collection', 1, 4, 50000, 3, 150000, true),
-        ('2x weekly package collection', 2, 8, 80000, 3, 240000, true)
+        ('1x weekly package collection', 1, 4, 30000, 3, 90000, true),
+        ('2x weekly package collection', 2, 8, 60000, 3, 180000, true)
 ) AS v(name, weekly_collections, monthly_collections, monthly_price_ugx, prepay_months, prepay_price_ugx, is_active)
 WHERE NOT EXISTS (
     SELECT 1 FROM subscription_plans
