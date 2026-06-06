@@ -63,7 +63,7 @@ class AboutScreen extends StatelessWidget {
               title: 'How It Works',
                 content:
                   '1. Choose a subscription plan (1x or 2x weekly collection)\n'
-                  '2. Pay 3 months in advance using Mobile Money via MarzPay\n'
+                  '2. Pay monthly or 3 months in advance using Mobile Money via MarzPay\n'
                   '3. Report collection using package count when needed\n'
                   '4. Collector is assigned and completes with resident QR verification\n'
                   '5. Track status and history from your report details',
@@ -73,11 +73,11 @@ class AboutScreen extends StatelessWidget {
             _buildSection(
                 title: 'Current Subscription Pricing',
                 content:
-                  '1x weekly (4 collections/month): UGX 50,000\n'
-                  '2x weekly (8 collections/month): UGX 80,000\n\n'
+                  '1x weekly (4 collections/month): UGX 30,000\n'
+                  '2x weekly (8 collections/month): UGX 60,000\n\n'
                   '3 months prepaid:\n'
-                  '1x weekly = UGX 150,000\n'
-                  '2x weekly = UGX 240,000\n\n'
+                  '1x weekly = UGX 90,000\n'
+                  '2x weekly = UGX 180,000\n\n'
                   'Collections are recorded in packages.',
               icon: Icons.money,
             ),
