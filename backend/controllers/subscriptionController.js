@@ -214,6 +214,25 @@ async function purchaseSubscription(req, res, next) {
 
         if (paymentError) throw paymentError;
 
+        if (paymentStatus === 'successful') {
+            const endDate = addMonths(new Date(nowIso), Number(plan.prepay_months || 3)).toISOString();
+            const { error: activateError } = await supabase
+                .from('subscriptions')
+                .update({
+                    status: 'active',
+                    start_date: nowIso,
+                    end_date: endDate,
+                    updated_at: nowIso,
+                })
+                .eq('id', subscription.id);
+
+            if (!activateError) {
+                subscription.status = 'active';
+                subscription.start_date = nowIso;
+                subscription.end_date = endDate;
+            }
+        }
+
         await createNotification({
             userId: req.user.id,
             title: 'Subscription payment initiated',
