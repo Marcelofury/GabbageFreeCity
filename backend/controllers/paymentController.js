@@ -375,28 +375,32 @@ async function applyMarzpayCallbackFallback({ transactionRef, providerRef, provi
         throw paymentUpdateResult.error;
     }
 
-    const { data: currentReport, error: reportLookupError } = await supabase
-        .from('garbage_reports')
-        .select('payment_status')
-        .eq('id', payment.report_id)
-        .single();
+    let oldOrderStatus = 'pending';
 
-    if (reportLookupError) {
-        throw reportLookupError;
-    }
+    if (payment.report_id) {
+        const { data: currentReport, error: reportLookupError } = await supabase
+            .from('garbage_reports')
+            .select('payment_status')
+            .eq('id', payment.report_id)
+            .single();
 
-    const newOrderStatus = mappedStatus;
+        if (!reportLookupError && currentReport) {
+            oldOrderStatus = currentReport.payment_status || 'pending';
+        }
 
-    const { error: reportUpdateError } = await supabase
-        .from('garbage_reports')
-        .update({
-            payment_status: newOrderStatus,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('id', payment.report_id);
+        const newOrderStatus = mappedStatus;
 
-    if (reportUpdateError) {
-        throw reportUpdateError;
+        const { error: reportUpdateError } = await supabase
+            .from('garbage_reports')
+            .update({
+                payment_status: newOrderStatus,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', payment.report_id);
+
+        if (reportUpdateError) {
+            throw reportUpdateError;
+        }
     }
 
     return {
@@ -404,8 +408,8 @@ async function applyMarzpayCallbackFallback({ transactionRef, providerRef, provi
         report_id: payment.report_id,
         previous_payment_status: payment.payment_status,
         new_payment_status: newPaymentStatus,
-        previous_order_status: currentReport.payment_status || 'pending',
-        new_order_status: newOrderStatus,
+        previous_order_status: oldOrderStatus,
+        new_order_status: mappedStatus,
     };
 }
 
@@ -766,7 +770,7 @@ async function syncPaymentStatus(req, res) {
     try {
         let paymentQuery = supabase
             .from('payments')
-            .select('id, report_id, subscription_id, resident_id, transaction_ref, flw_ref, transaction_id')
+            .select('id, report_id, subscription_id, resident_id, amount, transaction_ref, flw_ref, transaction_id')
             .order('created_at', { ascending: false })
             .limit(1);
 
@@ -832,7 +836,7 @@ async function syncPaymentStatus(req, res) {
         }
 
         if (payment.subscription_id) {
-            await updateSubscriptionFromPayment(payment.subscription_id, transition.new_payment_status, null);
+            await updateSubscriptionFromPayment(payment.subscription_id, transition.new_payment_status, payment.amount);
         } else {
             await notifyPaymentTransition({
                 residentId: payment.resident_id,
