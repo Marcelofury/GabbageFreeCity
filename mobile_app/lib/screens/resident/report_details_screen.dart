@@ -467,7 +467,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       'volume': report.estimatedVolume,
       'packageCount': report.packageCount,
       'amount': report.paymentAmount.toStringAsFixed(0),
-      'paymentStatus': report.paymentStatus == 'successful' ? 'paid' : 'unpaid',
+      'paymentStatus': ['successful', 'completed', 'paid'].contains(report.paymentStatus) ? 'paid' : 'unpaid',
       'txRef': report.transactionRef ?? 'N/A',
       'collectorName': report.assignedCollectorId != null ? 'Assigned Collector' : null,
       'eta': report.status == 'assigned' ? '~20 min' : null,
