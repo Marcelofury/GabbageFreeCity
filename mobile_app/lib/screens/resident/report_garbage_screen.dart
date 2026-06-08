@@ -98,7 +98,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
     if (reportId != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Report created! Proceed to payment.'),
+          content: Text('Report submitted successfully!'),
           backgroundColor: Colors.green,
         ),
       );
