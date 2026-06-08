@@ -82,12 +82,104 @@ async function getMySubscription(req, res, next) {
 
         if (error) throw error;
 
+        if (!data) {
+            const activated = await syncPendingSubscriptionPayment(req.user.id);
+            if (activated) {
+                const { data: refreshed, error: refetchError } = await supabase
+                    .from('subscriptions')
+                    .select('*, plan:subscription_plans(*)')
+                    .eq('resident_id', req.user.id)
+                    .eq('status', 'active')
+                    .gte('end_date', new Date().toISOString())
+                    .order('end_date', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (!refetchError && refreshed) {
+                    return res.json({
+                        success: true,
+                        data: { subscription: refreshed },
+                    });
+                }
+            }
+        }
+
         return res.json({
             success: true,
             data: { subscription: data || null },
         });
     } catch (error) {
         return next(error);
+    }
+}
+
+async function syncPendingSubscriptionPayment(residentId) {
+    try {
+        const { data: pendingSub } = await supabase
+            .from('subscriptions')
+            .select('id, plan:subscription_plans(prepay_months, monthly_collections)')
+            .eq('resident_id', residentId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!pendingSub) return false;
+
+        const { data: payment } = await supabase
+            .from('payments')
+            .select('id, amount, transaction_id, transaction_ref')
+            .eq('subscription_id', pendingSub.id)
+            .eq('payment_purpose', 'subscription')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!payment || !payment.transaction_id) return false;
+
+        let providerPayload;
+        try {
+            providerPayload = await marzpayService.checkTransactionStatus(payment.transaction_id);
+        } catch {
+            try {
+                const history = await marzpayService.getTransactionHistory({ reference: payment.transaction_ref });
+                providerPayload = Array.isArray(history?.data)
+                    ? { data: { transaction: history.data[0] || null } }
+                    : history;
+            } catch {
+                return false;
+            }
+        }
+
+        const root = providerPayload || {};
+        const data = root.data || {};
+        const transaction = data.transaction || root.transaction || {};
+        const providerStatus = transaction.status || data.status || root.status || 'pending';
+        const isSuccess = ['successful', 'completed', 'success', 'succeeded', 'paid'].includes(String(providerStatus).toLowerCase());
+
+        if (!isSuccess) return false;
+
+        const nowIso = new Date().toISOString();
+        const prepayMonths = Number(pendingSub.plan?.prepay_months || 3);
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + prepayMonths);
+
+        await supabase.from('payments').update({
+            payment_status: 'successful',
+            completed_at: nowIso,
+            updated_at: nowIso,
+        }).eq('id', payment.id);
+
+        await supabase.from('subscriptions').update({
+            status: 'active',
+            start_date: nowIso,
+            end_date: endDate.toISOString(),
+            updated_at: nowIso,
+        }).eq('id', pendingSub.id);
+
+        return true;
+    } catch {
+        return false;
     }
 }
 
