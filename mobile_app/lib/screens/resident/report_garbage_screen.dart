@@ -235,7 +235,7 @@ class _ReportGarbageScreenState extends State<ReportGarbageScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Number of Packages',
+                                    'Garbage Quantity',
                                     style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                 ],
