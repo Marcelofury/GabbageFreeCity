@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 
@@ -17,6 +18,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   List<Map<String, dynamic>> _collectionHistory = [];
   String _historyPeriod = 'month';
   bool _isLoadingHistory = false;
+  bool _isSyncingPayment = false;
 
   @override
   void initState() {
@@ -161,9 +163,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (!mounted) return;
 
       if (response['success'] == true) {
+        final data = response['data'] as Map<String, dynamic>?;
+        final transactionRef = data?['transactionRef']?.toString();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Payment initiated. Please approve on your phone.')),
         );
+
+        if (transactionRef != null && transactionRef.isNotEmpty) {
+          unawaited(_pollAndSyncSubscriptionStatus(transactionRef: transactionRef));
+        }
+
         await _loadData();
       } else {
         throw Exception(response['message'] ?? 'Failed to start subscription payment');
@@ -179,6 +189,57 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _pollAndSyncSubscriptionStatus({
+    required String transactionRef,
+  }) async {
+    if (_isSyncingPayment) return;
+    _isSyncingPayment = true;
+
+    try {
+      for (var attempt = 0; attempt < 12; attempt++) {
+        await Future.delayed(Duration(seconds: attempt == 0 ? 4 : 10));
+        if (!mounted) return;
+
+        final syncResult = await _apiService.syncPaymentStatus(
+          transactionRef: transactionRef,
+        );
+
+        if (syncResult['success'] != true) {
+          continue;
+        }
+
+        final syncData = syncResult['data'] as Map<String, dynamic>?;
+        final paymentStatus = syncData?['new_payment_status']?.toString() ?? 'pending';
+
+        if (paymentStatus == 'successful') {
+          await _loadData();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subscription activated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          return;
+        }
+
+        if (paymentStatus == 'failed') {
+          await _loadData();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment failed. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    } finally {
+      _isSyncingPayment = false;
     }
   }
 
